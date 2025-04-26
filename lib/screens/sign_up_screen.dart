@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttertoast/fluttertoast.dart'; // For error messages
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -58,7 +60,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: CustomButton(
                   text: "Get OTP Code",
                   onPressed: () {
-                    Navigator.pushNamed(context, '/home');
+                    Navigator.pushNamed(context, '/otp_code_screen');
                   },
                 ),
               ),
@@ -78,8 +80,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
 
                   TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/login');
+                    onPressed: () async {
+                      String phone = phoneController.text.trim();
+
+                      if (phone.isEmpty ||
+                          phone.length != 11 ||
+                          !phone.startsWith('03')) {
+                        Fluttertoast.showToast(
+                          msg:
+                              "Please enter a valid 11-digit number starting with 03",
+                        );
+                        return;
+                      }
+
+                      String formattedPhone =
+                          "+92" + phone.substring(1); // Remove 0 and add +92
+
+                      try {
+                        await FirebaseAuth.instance.verifyPhoneNumber(
+                          phoneNumber: formattedPhone,
+                          verificationCompleted:
+                              (PhoneAuthCredential credential) {},
+                          verificationFailed: (FirebaseAuthException e) {
+                            Fluttertoast.showToast(
+                              msg: "Verification Failed. ${e.message}",
+                            );
+                          },
+                          codeSent: (String verificationId, int? resendToken) {
+                            Navigator.pushNamed(
+                              context,
+                              '/otp_code_screen',
+                              arguments: {
+                                'verificationId': verificationId,
+                                'phoneNumber': formattedPhone,
+                              },
+                            );
+                          },
+                          codeAutoRetrievalTimeout: (String verificationId) {},
+                        );
+                      } catch (e) {
+                        Fluttertoast.showToast(msg: "Error: ${e.toString()}");
+                      }
                     },
                     child: const Text(
                       'Log in',

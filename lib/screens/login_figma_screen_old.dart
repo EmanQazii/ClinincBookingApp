@@ -3,13 +3,11 @@ import '../widgets/custom_button.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
     final String role = ModalRoute.of(context)!.settings.arguments as String;
-
     return Scaffold(
-      backgroundColor: const Color(0xFF2C7DA0),
+      backgroundColor: Color(0xFF2C7DA0),
       body: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Padding(
@@ -24,7 +22,7 @@ class LoginScreen extends StatelessWidget {
 
               RichText(
                 textAlign: TextAlign.center,
-                text: const TextSpan(
+                text: TextSpan(
                   children: [
                     TextSpan(
                       text: "Cure\n",
@@ -50,7 +48,7 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 10),
 
               // Welcome Text
-              const Text(
+              Text(
                 "Welcome Back!",
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -63,7 +61,7 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 15),
 
               // Sign In Text
-              const Text(
+              Text(
                 "Sign in",
                 style: TextStyle(
                   fontFamily: "Poppins",
@@ -75,19 +73,23 @@ class LoginScreen extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Email TextField (Modern Underline)
-              TextField(
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration("Enter your email or phone #"),
+              // Email TextField
+              Container(
+                decoration: _boxDecoration(),
+                child: TextField(
+                  decoration: _inputDecoration("Enter your email or phone #"),
+                ),
               ),
 
               const SizedBox(height: 20),
 
-              // Password TextField (Modern Underline)
-              TextField(
-                obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration("Enter your password"),
+              // Password TextField
+              Container(
+                decoration: _boxDecoration(),
+                child: TextField(
+                  obscureText: true,
+                  decoration: _inputDecoration("Enter your password"),
+                ),
               ),
 
               const SizedBox(height: 6),
@@ -99,7 +101,7 @@ class LoginScreen extends StatelessWidget {
                   Row(
                     children: [
                       Checkbox(value: true, onChanged: (value) {}),
-                      const Text(
+                      Text(
                         "Remember me",
                         style: TextStyle(color: Colors.white),
                       ),
@@ -107,15 +109,13 @@ class LoginScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () {},
-                    child: const Text(
+                    child: Text(
                       "Forgot Password?",
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 10),
 
               // Login Button
               CustomButton(
@@ -126,11 +126,10 @@ class LoginScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 9),
-
               if (role == 'patient') ...[
                 TextButton(
                   onPressed: () {},
-                  child: const Text(
+                  child: Text(
                     "Don't have an account?",
                     style: TextStyle(color: Colors.white),
                   ),
@@ -144,7 +143,7 @@ class LoginScreen extends StatelessWidget {
               ] else ...[
                 TextButton(
                   onPressed: () {},
-                  child: const Text(
+                  child: Text(
                     "Can't Login? Click Here to Contact Support.",
                     style: TextStyle(
                       color: Colors.white,
@@ -162,16 +161,29 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  static InputDecoration _inputDecoration(String hintText) {
+  // Custom Input Decoration for a Soft Look
+  InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
+      filled: true,
+      fillColor: Colors.white,
       hintText: hintText,
-      hintStyle: const TextStyle(color: Colors.white70),
-      enabledBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.white),
-      ),
-      focusedBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.tealAccent, width: 2),
-      ),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: InputBorder.none, // No border for softer look
+    );
+  }
+
+  // Custom Box Decoration for Elevated Look
+  BoxDecoration _boxDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: [
+        BoxShadow(
+          color: const Color.fromARGB(255, 92, 91, 91),
+          blurRadius: 1,
+          offset: Offset(0, 0.9),
+        ),
+      ],
     );
   }
 }
