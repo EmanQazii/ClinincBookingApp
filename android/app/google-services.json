@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "630106413727",
+    "project_id": "clinic-booking-app-bab47",
+    "storage_bucket": "clinic-booking-app-bab47.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630106413727:android:fd78c002c61e2511a820aa",
+        "android_client_info": {
+          "package_name": "com.example.clinic_booking_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcW94Vcw810AZTU4Ykt6UKYEsflkpufAA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
