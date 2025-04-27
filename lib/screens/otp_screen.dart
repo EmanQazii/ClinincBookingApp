@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import '../widgets/custom_button.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
-  final String verificationId;
-  final String phoneNumber;
-
-  OTPVerificationScreen({
-    required this.verificationId,
-    required this.phoneNumber,
-  });
+  const OTPVerificationScreen({super.key});
 
   @override
   _OTPVerificationScreenState createState() => _OTPVerificationScreenState();
@@ -18,6 +14,19 @@ class OTPVerificationScreen extends StatefulWidget {
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   final TextEditingController _otpController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  late String verificationId;
+  late String phoneNumber;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      verificationId = args['verificationId'];
+      phoneNumber = args['phoneNumber'];
+    }
+  }
 
   Future<void> _verifyOTP() async {
     final otp = _otpController.text.trim();
@@ -29,41 +38,31 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       return;
     }
 
-    PhoneAuthCredential credential = PhoneAuthProvider.credential(
-      verificationId: widget.verificationId,
-      smsCode: otp,
-    );
-
-    try {
-      await _auth.signInWithCredential(credential);
+    if (otp == "123456") {
+      // Dummy OTP matched (simulation)
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Successfully signed in!')));
-
-      // Navigate to Dashboard or Home Screen here
-      // Example:
-      // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => PatientDashboardScreen()));
+      ).showSnackBar(SnackBar(content: Text('Successfully signed in !')));
       Navigator.pushNamed(context, '/patient_dashboard');
-    } catch (e) {
-      print(e);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Invalid OTP')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid OTP (dummy check failed)')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF2C7DA0),
+      backgroundColor: const Color(0xFF2C7DA0),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(height: 40),
-              Text(
+              const SizedBox(height: 40),
+              const Text(
                 "Verify OTP",
                 style: TextStyle(
                   fontSize: 32,
@@ -71,13 +70,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   color: Colors.white,
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
-                "Enter the OTP sent to\n${widget.phoneNumber}",
+                "Enter the OTP sent to\n$phoneNumber",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, color: Colors.white70),
+                style: const TextStyle(fontSize: 18, color: Colors.white70),
               ),
-              SizedBox(height: 50),
+              const SizedBox(height: 50),
 
               // OTP Input Fields
               PinCodeTextField(
@@ -99,8 +98,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   inactiveColor: Colors.white70,
                   inactiveFillColor: Colors.white24,
                 ),
-                animationDuration: Duration(milliseconds: 300),
-                backgroundColor: Color(0xFF2C7DA0),
+                animationDuration: const Duration(milliseconds: 300),
+                backgroundColor: const Color(0xFF2C7DA0),
                 enableActiveFill: true,
                 onCompleted: (value) {
                   print("Completed: $value");
@@ -108,38 +107,25 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 onChanged: (value) {},
               ),
 
-              SizedBox(height: 50),
+              const SizedBox(height: 50),
 
               // Verify Button
               SizedBox(
                 width: double.infinity,
                 height: 55,
-                child: ElevatedButton(
-                  onPressed: _verifyOTP,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    "Verify",
-                    style: TextStyle(
-                      color: Color(0xFF2C7DA0),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                child: CustomButton(onPressed: _verifyOTP, text: "Verify"),
               ),
 
-              Spacer(),
+              const Spacer(),
 
               TextButton(
                 onPressed: () {
-                  // Optionally allow user to re-send OTP
+                  // You can add re-sending OTP feature here later
+                  Fluttertoast.showToast(
+                    msg: "Resend OTP feature not implemented yet",
+                  );
                 },
-                child: Text(
+                child: const Text(
                   "Didn't receive code? Resend",
                   style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),

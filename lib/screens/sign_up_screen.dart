@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fluttertoast/fluttertoast.dart'; // For error messages
+import 'package:fluttertoast/fluttertoast.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -20,7 +20,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF2C7DA0),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -32,7 +32,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   height: 100,
                 ),
               ),
-
               const Text(
                 'Create Account',
                 style: TextStyle(
@@ -47,20 +46,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 phoneController,
                 false,
                 "e.g 03XXXXXXXXX (11-digit number)",
+                false,
               ),
               _buildTextField(
                 'Password',
                 passwordController,
                 true,
                 "Create a password",
+                true,
               ),
               const SizedBox(height: 10),
-
               Center(
                 child: CustomButton(
                   text: "Get OTP Code",
                   onPressed: () {
-                    Navigator.pushNamed(context, '/otp_code_screen');
+                    String phone = phoneController.text.trim();
+
+                    if (phone.isEmpty ||
+                        phone.length != 11 ||
+                        !phone.startsWith('03')) {
+                      Fluttertoast.showToast(
+                        msg:
+                            "Please enter a valid 11-digit number starting with 03",
+                      );
+                      return;
+                    }
+
+                    String formattedPhone = "+92${phone.substring(1)}";
+
+                    Navigator.pushNamed(
+                      context,
+                      '/otp_code_screen',
+                      arguments: {
+                        'verificationId': 'dummy_verification_id',
+                        'phoneNumber': formattedPhone,
+                      },
+                    );
                   },
                 ),
               ),
@@ -68,7 +89,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     'Already have an account?',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -78,7 +99,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       fontStyle: FontStyle.italic,
                     ),
                   ),
-
                   TextButton(
                     onPressed: () async {
                       String phone = phoneController.text.trim();
@@ -93,8 +113,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         return;
                       }
 
-                      String formattedPhone =
-                          "+92" + phone.substring(1); // Remove 0 and add +92
+                      String formattedPhone = "+92${phone.substring(1)}";
 
                       try {
                         await FirebaseAuth.instance.verifyPhoneNumber(
@@ -146,6 +165,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     TextEditingController controller,
     bool isPassword,
     String hintText,
+    bool showPasswordToggle,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
@@ -160,42 +180,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 6), // Space between label & TextField
-          Material(
-            elevation: 5, // Elevation effect
-            borderRadius: BorderRadius.circular(8),
-            child: TextField(
-              controller: controller,
-              obscureText: isPassword ? !passwordVisible : false,
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 14,
-                ),
-                hintText: hintText,
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon:
-                    isPassword
-                        ? IconButton(
-                          icon: Icon(
-                            passwordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed:
-                              () => setState(
-                                () => passwordVisible = !passwordVisible,
-                              ),
-                        )
-                        : null,
+          const SizedBox(height: 6),
+          TextField(
+            controller: controller,
+            obscureText: isPassword ? !passwordVisible : false,
+            style: const TextStyle(color: Colors.white),
+            keyboardType: isPassword ? TextInputType.text : TextInputType.phone,
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Colors.white70),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white),
               ),
-              keyboardType:
-                  isPassword ? TextInputType.text : TextInputType.phone,
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.tealAccent, width: 2),
+              ),
+              suffixIcon:
+                  showPasswordToggle
+                      ? IconButton(
+                        icon: Icon(
+                          passwordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          color: Colors.white70,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            passwordVisible = !passwordVisible;
+                          });
+                        },
+                      )
+                      : null,
             ),
           ),
         ],

@@ -27,28 +27,8 @@ class MyApp extends StatelessWidget {
         '/home': (context) => HomePage(),
         '/login': (context) => LoginScreen(),
         '/signup': (context) => SignUpScreen(),
+        '/otp_code_screen': (context) => OTPVerificationScreen(),
         '/patient_dashboard': (context) => PatientDashboardScreen(),
-      },
-      onGenerateRoute: (settings) {
-        if (settings.name == '/otp_code_screen') {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder:
-                (context) => OTPVerificationScreen(
-                  verificationId: args['verificationId'],
-                  phoneNumber: args['phoneNumber'],
-                ),
-          );
-        }
-        // unknown route
-        return MaterialPageRoute(
-          builder:
-              (context) => Scaffold(
-                body: Center(
-                  child: Text('No route defined for ${settings.name}'),
-                ),
-              ),
-        );
       },
     );
   }

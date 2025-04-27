@@ -117,17 +117,15 @@ class LoginScreen extends StatelessWidget {
 
               const SizedBox(height: 10),
 
-              // Login Button
-              CustomButton(
-                text: 'Login',
-                onPressed: () {
-                  Navigator.pushNamed(context, '/home');
-                },
-              ),
-
-              const SizedBox(height: 9),
-
               if (role == 'patient') ...[
+                CustomButton(
+                  text: 'Login',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/patient_dashboard');
+                  },
+                ),
+
+                const SizedBox(height: 9),
                 TextButton(
                   onPressed: () {},
                   child: const Text(
@@ -142,6 +140,13 @@ class LoginScreen extends StatelessWidget {
                   },
                 ),
               ] else ...[
+                CustomButton(
+                  text: 'Login',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/doctor_dashboard');
+                  },
+                ),
+                const SizedBox(height: 9),
                 TextButton(
                   onPressed: () {},
                   child: const Text(
