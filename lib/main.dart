@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginScreen(),
         '/signup': (context) => SignUpScreen(),
         '/otp_code_screen': (context) => OTPVerificationScreen(),
-        '/patient_dashboard': (context) => PatientDashboardScreen(),
+        '/patient_dashboard': (context) => PatientDashboard(),
       },
     );
   }
