@@ -34,6 +34,7 @@ dependencies:
   carousel_slider: ^4.2.0
   pin_code_fields: ^8.0.1
   fluttertoast: any
+  intl: ^0.18.1
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -69,6 +70,12 @@ flutter:
 
   assets:
       - assets/images/clinic_logo.png
+      - assets/images/dummy_map.png
+      - assets/images/promo1.jpg
+      - assets/images/promo2.jpg
+      - assets/images/promo3.jpg
+      - assets/images/doctor.png
+      - 'assets/images/clinic.png'
 
   fonts:
       - family: Kavoon

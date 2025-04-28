@@ -4,7 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'screens/login_figma_screen.dart';
 import 'screens/sign_up_screen.dart';
-import 'screens/patient_dashboard_screen.dart';
+import 'screens/patients_screen/patient_dashboard_screen.dart';
+import 'screens/patients_screen/clinic_details_screen.dart';
+import 'screens/patients_screen/doctor_details_screen.dart';
+import 'screens/patients_screen/book_appointment_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +32,9 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => SignUpScreen(),
         '/otp_code_screen': (context) => OTPVerificationScreen(),
         '/patient_dashboard': (context) => PatientDashboard(),
+        '/clinic_details': (context) => ClinicDetailScreen(),
+        '/doctor_details': (context) => DoctorDetailsScreen(),
+        '/book_appointment': (context) => BookAppointmentScreen(),
       },
     );
   }
