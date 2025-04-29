@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
 
 const Color mainColor = Color(0xFF2C7DA0);
 const Color subColor = Color(0xFF3ABCC0);
@@ -276,9 +277,9 @@ class DiagnosisDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prescription = appointment['prescription'];
-    final String prescriptionText = prescription ?? '';
+    final String prescriptionText =
+        prescription is Map ? _buildPrescriptionText(prescription) : '';
 
-    // Ensure prescription is a Map before accessing its fields
     final List<dynamic> medicines =
         prescription is Map ? prescription['medicines'] ?? [] : [];
     final String notes = prescription is Map ? prescription['notes'] ?? '' : '';
@@ -330,7 +331,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            /// Prescription Info Card
+            /// --- Prescription Info Card ---
             Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -464,9 +465,18 @@ class DiagnosisDetailScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 6),
                         child: Row(
                           children: [
-                            Expanded(flex: 3, child: Text(medicine['name'])),
-                            Expanded(flex: 2, child: Text(medicine['dosage'])),
-                            Expanded(flex: 3, child: Text(medicine['timing'])),
+                            Expanded(
+                              flex: 3,
+                              child: Text(medicine['name'] ?? ''),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(medicine['dosage'] ?? ''),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(medicine['timing'] ?? ''),
+                            ),
                           ],
                         ),
                       );
@@ -521,6 +531,20 @@ class DiagnosisDetailScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Helper to create formatted prescription string for copying
+  String _buildPrescriptionText(Map prescription) {
+    final medicines = prescription['medicines'] as List<dynamic>? ?? [];
+    final notes = prescription['notes'] ?? '';
+
+    final buffer = StringBuffer();
+    buffer.writeln('Prescription:');
+    for (var med in medicines) {
+      buffer.writeln('• ${med['name']} - ${med['dosage']} (${med['timing']})');
+    }
+    buffer.writeln('\nNotes: $notes');
+    return buffer.toString();
   }
 
   // Section Card Wrapper

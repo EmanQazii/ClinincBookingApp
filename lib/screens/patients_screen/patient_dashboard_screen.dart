@@ -1,3 +1,4 @@
+import 'package:clinic_booking_app/screens/patients_screen/history_screen.dart';
 import 'package:flutter/material.dart';
 import './my_appointment_screen.dart';
 
@@ -56,7 +57,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
       case '/appointments':
         return MyAppointmentsScreen();
       case '/history':
-        return const PlaceholderPage(title: 'History');
+        return HistoryScreen();
       case '/profile':
         return const PlaceholderPage(title: 'Profile');
       default:
