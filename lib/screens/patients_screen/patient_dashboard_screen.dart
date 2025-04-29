@@ -1,4 +1,5 @@
 import 'package:clinic_booking_app/screens/patients_screen/history_screen.dart';
+import 'package:clinic_booking_app/screens/patients_screen/patient_profile_screen.dart';
 import 'package:flutter/material.dart';
 import './my_appointment_screen.dart';
 
@@ -59,9 +60,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
       case '/history':
         return HistoryScreen();
       case '/profile':
-        return const PlaceholderPage(title: 'Profile');
+        return ProfileScreen();
       default:
-        return const PatientDashboard(); // Default to dashboard
+        return const PatientDashboard();
     }
   }
 
@@ -485,21 +486,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
         BottomNavigationBarItem(icon: Icon(Icons.history), label: "History"),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
       ],
-    );
-  }
-}
-
-class PlaceholderPage extends StatelessWidget {
-  final String title;
-  const PlaceholderPage({Key? key, required this.title}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Text('$title Page', style: const TextStyle(fontSize: 24)),
-      ),
     );
   }
 }
