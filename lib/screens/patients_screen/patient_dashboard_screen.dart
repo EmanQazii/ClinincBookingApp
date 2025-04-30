@@ -1,5 +1,7 @@
+import 'package:clinic_booking_app/screens/patients_screen/appointments_history_screen.dart';
 import 'package:clinic_booking_app/screens/patients_screen/history_screen.dart';
 import 'package:clinic_booking_app/screens/patients_screen/patient_profile_screen.dart';
+import 'package:clinic_booking_app/screens/patients_screen/prescription_plan_screen.dart';
 import 'package:flutter/material.dart';
 import './my_appointment_screen.dart';
 
@@ -55,10 +57,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
 
   Widget _getPageByRoute(String route) {
     switch (route) {
-      case '/appointments':
-        return MyAppointmentsScreen();
-      case '/history':
-        return HistoryScreen();
+      case '/appointments_history':
+        return CombinedAppointmentsScreen();
+      case '/prescriptions':
+        return PrescriptionScreen();
       case '/profile':
         return ProfileScreen();
       default:
@@ -467,10 +469,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
             //_navigateWithAnimation(context, '/patient_dashboard');
             break;
           case 1:
-            _navigateWithAnimation(context, '/appointments');
+            _navigateWithAnimation(context, '/appointments_history');
             break;
           case 2:
-            _navigateWithAnimation(context, '/history');
+            _navigateWithAnimation(context, '/prescriptions');
             break;
           case 3:
             _navigateWithAnimation(context, '/profile');
@@ -481,9 +483,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
         BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
         BottomNavigationBarItem(
           icon: Icon(Icons.calendar_today),
-          label: "Appointments",
+          label: "My Appointments",
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.history), label: "History"),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.medication),
+          label: "Prescriptions",
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
       ],
     );

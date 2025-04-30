@@ -80,7 +80,8 @@ flutter:
       - 'assets/images/default_profile.png'
 
   fonts:
-      - family: Kavoon
+      #- family: Kavoon
+      - family: Montserrat
         fonts:
         - asset: assets/fonts/Kavoon-Regular.ttf
       

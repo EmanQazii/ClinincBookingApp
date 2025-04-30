@@ -19,9 +19,7 @@ class LoginScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 60),
 
-              Image.asset("assets/images/clinic_logo.png", height: 100),
-              const SizedBox(height: 10),
-
+              Image.asset("assets/images/clinic_logo.png", height: 180),
               RichText(
                 textAlign: TextAlign.center,
                 text: const TextSpan(
