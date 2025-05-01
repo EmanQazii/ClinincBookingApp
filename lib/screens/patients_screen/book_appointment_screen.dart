@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
+  const BookAppointmentScreen({super.key});
+
   @override
   _BookAppointmentScreenState createState() => _BookAppointmentScreenState();
 }

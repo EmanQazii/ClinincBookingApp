@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ClinicDetailScreen extends StatefulWidget {
+  const ClinicDetailScreen({super.key});
+
   @override
   _CliClinicDetailScreenState createState() => _CliClinicDetailScreenState();
 }

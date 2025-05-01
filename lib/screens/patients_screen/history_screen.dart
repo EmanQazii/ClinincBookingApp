@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
 
 const Color mainColor = Color(0xFF2C7DA0);
 const Color subColor = Color(0xFF3ABCC0);
 
 class HistoryScreen extends StatefulWidget {
+  const HistoryScreen({super.key});
+
   @override
   _HistoryScreenState createState() => _HistoryScreenState();
 }
@@ -183,7 +184,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         const SizedBox(height: 12),
         ...filteredAppointments
             .map((appointment) => _buildAppointmentCard(appointment))
-            .toList(),
+            ,
       ],
     );
   }
@@ -271,8 +272,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 class DiagnosisDetailScreen extends StatelessWidget {
   final Map<String, dynamic> appointment;
 
-  const DiagnosisDetailScreen({required this.appointment, Key? key})
-    : super(key: key);
+  const DiagnosisDetailScreen({required this.appointment, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -480,7 +480,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
 
                     const Divider(height: 30, thickness: 1),
 
