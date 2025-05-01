@@ -78,11 +78,19 @@ flutter:
       - assets/images/doctor.png
       - 'assets/images/clinic.png'
       - 'assets/images/default_profile.png'
+      - assets/icons/skin.png
+      - assets/icons/gyno.png
+      - assets/icons/urologist.png
+      - assets/icons/child.png
+      - assets/icons/ortho.png
+      - assets/icons/physician.png
 
   fonts:
       #- family: Kavoon
       - family: Montserrat
         fonts:
+        - asset: assets/fonts/Montserrat-Regular.ttf
+        - asset: assets/fonts/Montserrat-Bold.ttf
         - asset: assets/fonts/Kavoon-Regular.ttf
       
 

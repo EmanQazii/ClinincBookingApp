@@ -1,9 +1,7 @@
 import 'package:clinic_booking_app/screens/patients_screen/appointments_history_screen.dart';
-import 'package:clinic_booking_app/screens/patients_screen/history_screen.dart';
 import 'package:clinic_booking_app/screens/patients_screen/patient_profile_screen.dart';
 import 'package:clinic_booking_app/screens/patients_screen/prescription_plan_screen.dart';
 import 'package:flutter/material.dart';
-import './my_appointment_screen.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -89,6 +87,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
             const SizedBox(height: 12),
             _buildPromotionCarousel(),
             const SizedBox(height: 24),
+            _buildSpecializationsCard(),
+
+            const SizedBox(height: 20),
             _sectionTitle("Recommended Doctors for you"),
             const SizedBox(height: 12),
             _buildHorizontalCards(context, isDoctor: true),
@@ -493,4 +494,97 @@ class _PatientDashboardState extends State<PatientDashboard> {
       ],
     );
   }
+}
+
+Widget _buildSpecializationsCard() {
+  final List<Map<String, String>> specializations = [
+    {"title": "Skin Specialist", "image": "assets/icons/skin.png"},
+    {"title": "Gynecologist", "image": "assets/icons/gyno.png"},
+    {"title": "Urologist", "image": "assets/icons/urologist.png"},
+    {"title": "Child Specialist", "image": "assets/icons/child.png"},
+    {"title": "Orthopedic Surgeon", "image": "assets/icons/ortho.png"},
+    {"title": "Consultant Physician", "image": "assets/icons/physician.png"},
+  ];
+
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.2),
+          blurRadius: 6,
+          offset: const Offset(2, 2),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "I am looking for",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: specializations.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 4,
+              childAspectRatio: 0.9,
+            ),
+            itemBuilder: (context, index) {
+              return Column(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.grey.shade100,
+                    backgroundImage: AssetImage(
+                      specializations[index]['image']!,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    specializations[index]['title']!,
+                    style: const TextStyle(fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        InkWell(
+          onTap: () {
+            // Handle button tap
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Color(0xFF3ABCC0),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text(
+                "All Specializations",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -18,7 +18,10 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   @override
   Widget build(BuildContext context) {
     final tabs = ['Active Plans', 'Doctor Sent', 'Completed'];
+
     return Scaffold(
+      backgroundColor: Colors.white,
+
       appBar: AppBar(
         elevation: 0,
         backgroundColor: mainColor,
@@ -159,7 +162,6 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
       builder: (context, setState) {
         bool isCompleted = false;
 
-        // Initialize tracker: all previous days = true, except one = false
         Map<String, List<bool>> medicineTracker = {
           for (var med in medicines)
             med: List.generate(durationDays, (i) {
@@ -182,6 +184,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
           child: IgnorePointer(
             ignoring: isCompleted,
             child: Card(
+              color: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -443,6 +446,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   }) {
     final double completedPercentage = (takenDoses / totalDoses) * 100;
     return Card(
+      color: Colors.white,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,

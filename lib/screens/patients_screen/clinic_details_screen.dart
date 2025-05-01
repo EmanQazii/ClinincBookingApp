@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ClinicDetailScreen extends StatefulWidget {
+  const ClinicDetailScreen({super.key});
+
   @override
   _CliClinicDetailScreenState createState() => _CliClinicDetailScreenState();
 }
@@ -22,9 +24,7 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
         centerTitle: true,
         actions: [
           TextButton.icon(
-            onPressed: () {
-              // Handle Help Button
-            },
+            onPressed: () {},
             icon: const Icon(Icons.help_outline, color: mainColor),
             label: const Text('Help', style: TextStyle(color: mainColor)),
           ),
@@ -37,14 +37,12 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Clinic Name
             const Text(
               'Clinic Name',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            // Address and Phone
             Row(
               children: const [
                 Icon(Icons.location_on_outlined, color: mainColor),
@@ -63,7 +61,6 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
 
             const SizedBox(height: 24),
 
-            // Map Location
             const Text(
               'Map Location',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -81,7 +78,6 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
 
             const SizedBox(height: 24),
 
-            // Open Hours
             const Text(
               'Open Hours',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -98,7 +94,6 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
 
             const SizedBox(height: 24),
 
-            // Doctors Available
             const Text(
               'Doctors Available',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
