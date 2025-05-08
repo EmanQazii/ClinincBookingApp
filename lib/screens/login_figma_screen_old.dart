@@ -140,7 +140,7 @@ class LoginScreen extends StatelessWidget {
                     Navigator.pushNamed(context, '/signup');
                   },
                 ),
-              ] else ...[
+              ] else if (role == 'doctor')...[
                 TextButton(
                   onPressed: () {},
                   child: Text(

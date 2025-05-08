@@ -41,8 +41,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_core: ^3.13.0
   firebase_auth: ^5.5.2
-  cloud_firestore: ^5.6.7
-
 
 dev_dependencies:
   flutter_test:
@@ -86,6 +84,11 @@ flutter:
       - assets/icons/child.png
       - assets/icons/ortho.png
       - assets/icons/physician.png
+      - assets/images/news1.jpg
+      - assets/images/news2.jpg
+      - assets/images/news3.jpg
+      - assets/images/doctor.jpg
+      
 
   fonts:
       #- family: Kavoon
