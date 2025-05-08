@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_button.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,206 +14,214 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool passwordVisible = false;
 
+  static const Color mainColor = Color(0xFF0A73B7);
+  static const Color subColor = Color(0xFF00BFA6);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2C7DA0),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Image.asset(
-                  "assets/images/clinic_logo.png",
-                  height: 100,
-                ),
-              ),
-              const Text(
-                'Create Account',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                'Phone Number',
-                phoneController,
-                false,
-                "e.g 03XXXXXXXXX (11-digit number)",
-                false,
-              ),
-              _buildTextField(
-                'Password',
-                passwordController,
-                true,
-                "Create a password",
-                true,
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: CustomButton(
-                  text: "Get OTP Code",
-                  onPressed: () {
-                    String phone = phoneController.text.trim();
-
-                    if (phone.isEmpty ||
-                        phone.length != 11 ||
-                        !phone.startsWith('03')) {
-                      Fluttertoast.showToast(
-                        msg:
-                            "Please enter a valid 11-digit number starting with 03",
-                      );
-                      return;
-                    }
-
-                    String formattedPhone = "+92${phone.substring(1)}";
-
-                    Navigator.pushNamed(
-                      context,
-                      '/otp_code_screen',
-                      arguments: {
-                        'verificationId': 'dummy_verification_id',
-                        'phoneNumber': formattedPhone,
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 5),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Already have an account?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Open Sans',
-                      color: Color(0xFFFAFDFF),
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                    ),
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Column(
+          children: [
+            ClipPath(
+              clipper: TopCurveClipper(),
+              child: Container(
+                width: double.infinity,
+                height: 300,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [mainColor, subColor],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  TextButton(
-                    onPressed: () async {
-                      String phone = phoneController.text.trim();
-
-                      if (phone.isEmpty ||
-                          phone.length != 11 ||
-                          !phone.startsWith('03')) {
-                        Fluttertoast.showToast(
-                          msg:
-                              "Please enter a valid 11-digit number starting with 03",
-                        );
-                        return;
-                      }
-
-                      String formattedPhone = "+92${phone.substring(1)}";
-
-                      try {
-                        await FirebaseAuth.instance.verifyPhoneNumber(
-                          phoneNumber: formattedPhone,
-                          verificationCompleted:
-                              (PhoneAuthCredential credential) {},
-                          verificationFailed: (FirebaseAuthException e) {
-                            Fluttertoast.showToast(
-                              msg: "Verification Failed. ${e.message}",
-                            );
-                          },
-                          codeSent: (String verificationId, int? resendToken) {
-                            Navigator.pushNamed(
-                              context,
-                              '/otp_code_screen',
-                              arguments: {
-                                'verificationId': verificationId,
-                                'phoneNumber': formattedPhone,
-                              },
-                            );
-                          },
-                          codeAutoRetrievalTimeout: (String verificationId) {},
-                        );
-                      } catch (e) {
-                        Fluttertoast.showToast(msg: "Error: ${e.toString()}");
-                      }
-                    },
-                    child: const Text(
-                      'Log in',
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 24.0, bottom: 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Create Your\nAccount",
                       style: TextStyle(
-                        color: Colors.cyan,
-                        fontStyle: FontStyle.italic,
-                        decoration: TextDecoration.underline,
-                        decorationColor: Colors.cyan,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: "Poppins",
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    String label,
-    TextEditingController controller,
-    bool isPassword,
-    String hintText,
-    bool showPasswordToggle,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
             ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: controller,
-            obscureText: isPassword ? !passwordVisible : false,
-            style: const TextStyle(color: Colors.white),
-            keyboardType: isPassword ? TextInputType.text : TextInputType.phone,
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: const TextStyle(color: Colors.white70),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.tealAccent, width: 2),
-              ),
-              suffixIcon:
-                  showPasswordToggle
-                      ? IconButton(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 15),
+                  Text(
+                    "Phone Number",
+                    style: TextStyle(
+                      color: mainColor,
+                      fontFamily: "Montserrat",
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: Colors.grey.shade400),
+                          ),
+                        ),
+                        child: const Text(
+                          "+92",
+                          style: TextStyle(fontSize: 16, color: Colors.black87),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: TextField(
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          cursorColor: subColor,
+                          decoration: _inputDecoration("3XXXXXXXXXX"),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Password",
+                    style: TextStyle(
+                      color: mainColor,
+                      fontFamily: "Montserrat",
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: !passwordVisible,
+                    cursorColor: subColor,
+                    decoration: _inputDecoration("Create a password").copyWith(
+                      suffixIcon: IconButton(
                         icon: Icon(
                           passwordVisible
                               ? Icons.visibility
                               : Icons.visibility_off,
-                          color: Colors.white70,
+                          color: Colors.grey,
                         ),
                         onPressed: () {
                           setState(() {
                             passwordVisible = !passwordVisible;
                           });
                         },
-                      )
-                      : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        String phone = phoneController.text.trim();
+                        if (phone.isEmpty || phone.length != 10) {
+                          Fluttertoast.showToast(
+                            msg: "Enter a valid 10-digit number after +92",
+                          );
+                          return;
+                        }
+                        String formattedPhone = "+92$phone";
+
+                        Navigator.pushNamed(
+                          context,
+                          '/otp_code_screen',
+                          arguments: {
+                            'verificationId': 'dummy_verification_id',
+                            'phoneNumber': formattedPhone,
+                          },
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        backgroundColor: subColor,
+                      ),
+                      child: const Text(
+                        "GET OTP CODE",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Already have an account? "),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          "Log in",
+                          style: TextStyle(
+                            color: mainColor,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  static InputDecoration _inputDecoration(String hintText) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: const TextStyle(color: Colors.grey),
+      border: const UnderlineInputBorder(),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: subColor, width: 2),
+      ),
+    );
+  }
+}
+
+class TopCurveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height - 60);
+    path.quadraticBezierTo(
+      size.width / 2,
+      size.height,
+      size.width,
+      size.height - 60,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

@@ -182,9 +182,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ...filteredAppointments
-            .map((appointment) => _buildAppointmentCard(appointment))
-            ,
+        ...filteredAppointments.map(
+          (appointment) => _buildAppointmentCard(appointment),
+        ),
       ],
     );
   }

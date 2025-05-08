@@ -35,11 +35,13 @@ dependencies:
   pin_code_fields: ^8.0.1
   fluttertoast: any
   intl: ^0.18.1
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  image_picker: any
+  font_awesome_flutter: any
+  flutter_animate: any
   cupertino_icons: ^1.0.8
   firebase_core: ^3.13.0
   firebase_auth: ^5.5.2
+  fl_chart: ^0.66.0
 
 dev_dependencies:
   flutter_test:
@@ -76,10 +78,25 @@ flutter:
       - assets/images/promo3.jpg
       - assets/images/doctor.png
       - 'assets/images/clinic.png'
+      - 'assets/images/default_profile.png'
+      - assets/icons/skin.png
+      - assets/icons/gyno.png
+      - assets/icons/urologist.png
+      - assets/icons/child.png
+      - assets/icons/ortho.png
+      - assets/icons/physician.png
+      - assets/images/news1.jpg
+      - assets/images/news2.jpg
+      - assets/images/news3.jpg
+      - assets/images/doctor.jpg
+      
 
   fonts:
-      - family: Kavoon
+      #- family: Kavoon
+      - family: Montserrat
         fonts:
+        - asset: assets/fonts/Montserrat-Regular.ttf
+        - asset: assets/fonts/Montserrat-Bold.ttf
         - asset: assets/fonts/Kavoon-Regular.ttf
       
 

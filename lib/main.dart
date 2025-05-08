@@ -8,6 +8,7 @@ import 'screens/patients_screen/patient_dashboard_screen.dart';
 import 'screens/patients_screen/clinic_details_screen.dart';
 import 'screens/patients_screen/doctor_details_screen.dart';
 import 'screens/patients_screen/book_appointment_screen.dart';
+import 'screens/doctors_screen/doctor_dashboard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         '/clinic_details': (context) => ClinicDetailScreen(),
         '/doctor_details': (context) => DoctorDetailsScreen(),
         '/book_appointment': (context) => BookAppointmentScreen(),
+        '/doctor_dashboard': (context) => DoctorDashboardScreen(),
       },
     );
   }
