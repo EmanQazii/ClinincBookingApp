@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 const mainColor = Color(0xFF0A73B7);
 const subColor = Color(0xFF00BFA6);

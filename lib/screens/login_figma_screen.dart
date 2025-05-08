@@ -118,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               unselectedWidgetColor:
                                   mainColor, // Border color when unchecked
                               checkboxTheme: CheckboxThemeData(
-                                fillColor: MaterialStateProperty.all(
+                                fillColor: WidgetStateProperty.all(
                                   mainColor,
                                 ), // Fill when checked
                               ),
@@ -156,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           context,
                           role == 'patient'
                               ? '/patient_dashboard'
-                              : '/doctor_dashboard',
+                              : '/appointment_session',
                         );
                       },
                       style: ElevatedButton.styleFrom(

@@ -1,3 +1,4 @@
+import 'package:clinic_booking_app/screens/doctors_screen/session_appointment_screen.dart';
 import 'package:clinic_booking_app/screens/home_screen_flutterflow.dart';
 import 'package:clinic_booking_app/screens/otp_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,7 +7,6 @@ import 'screens/login_figma_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/patients_screen/patient_dashboard_screen.dart';
 import 'screens/patients_screen/clinic_details_screen.dart';
-import 'screens/patients_screen/doctor_details_screen.dart';
 import 'screens/patients_screen/book_appointment_screen.dart';
 
 Future<void> main() async {
@@ -33,8 +33,8 @@ class MyApp extends StatelessWidget {
         '/otp_code_screen': (context) => OTPVerificationScreen(),
         '/patient_dashboard': (context) => PatientDashboard(),
         '/clinic_details': (context) => ClinicDetailScreen(),
-        '/doctor_details': (context) => DoctorDetailsScreen(),
         '/book_appointment': (context) => BookAppointmentScreen(),
+        '/appointment_session': (context) => AppointmentSessionScreen(),
       },
     );
   }
