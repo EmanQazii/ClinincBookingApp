@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends StatelessWidget {
@@ -53,12 +55,28 @@ class HomePage extends StatelessWidget {
                   const SizedBox(height: 10),
                   CustomModernButton(
                     text: 'Patient',
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/login',
-                        arguments: 'patient',
-                      );
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      final rememberMe = prefs.getBool('remember_me') ?? false;
+                      final currentUser = FirebaseAuth.instance.currentUser;
+
+                      if (rememberMe) {
+                        // Auto-login
+                        Navigator.pushReplacementNamed(
+                          context,
+                          '/login',
+                          arguments: 'patient',
+                          // '/patient_loader',
+                          // arguments: currentUser.uid,
+                        );
+                      } else {
+                        // fallback action (maybe go to login screen anyway)
+                        Navigator.pushNamed(
+                          context,
+                          '/login',
+                          arguments: 'patient',
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 10),
@@ -76,7 +94,7 @@ class HomePage extends StatelessWidget {
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'Want to Register Your Clinic/Hospital?\nClick on the link below:',
+                      'Want to Register Your Clinic/Hospital?',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Montserrat',

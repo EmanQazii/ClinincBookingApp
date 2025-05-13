@@ -5,6 +5,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Assuming you have these colors defined in your theme
 const Color mainColor = Color(0xFF0A73B7);
@@ -193,8 +195,25 @@ class _ProfileScreenState extends State<ProfileScreen>
               icon: FontAwesomeIcons.rightFromBracket,
               title: 'Log Out',
               subtitle: 'Sign out of your account',
-              onTap: () {
-                // Handle logout
+              onTap: () async {
+                // Clear SharedPreferences
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool(
+                  'remember_me',
+                  false,
+                ); // Reset the rememberMe flag
+                await prefs.remove('saved_email');
+                await prefs.remove('saved_password');
+
+                // Sign out from Firebase
+                await FirebaseAuth.instance.signOut();
+
+                // Navigate to the login screen after logging out
+                Navigator.pushReplacementNamed(
+                  context,
+                  '/login',
+                  arguments: 'patient',
+                );
               },
               color: Colors.redAccent,
             ),

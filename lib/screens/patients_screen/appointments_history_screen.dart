@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
+import '/models/patient_model.dart';
+import 'package:clinic_booking_app/services/appointment_service.dart';
 
 const Color mainColor = Color(0xFF0A73B7);
 const Color subColor = Color(0xFF3ABCC0);
 
 class CombinedAppointmentsScreen extends StatefulWidget {
-  const CombinedAppointmentsScreen({super.key});
+  final PatientModel patient;
+
+  const CombinedAppointmentsScreen({Key? key, required this.patient})
+    : super(key: key);
 
   @override
   State<CombinedAppointmentsScreen> createState() =>
@@ -15,26 +20,26 @@ class CombinedAppointmentsScreen extends StatefulWidget {
 
 class _CombinedAppointmentsScreenState
     extends State<CombinedAppointmentsScreen> {
-  List<Map<String, dynamic>> appointments = [
-    {
-      'doctorName': 'Dr. Javaid Iqbal',
-      'specialization': 'Cardiologist',
-      'clinic': 'City Heart Clinic',
-      'date': 'May 2, 2025',
-      'time': '10:00 AM',
-      'image': 'assets/images/doctor.png',
-      'phone': '+1234567890',
-    },
-    {
-      'doctorName': 'Dr. Sarah Khan',
-      'specialization': 'Dermatologist',
-      'clinic': 'Skin Care Center',
-      'date': 'May 4, 2025',
-      'time': '2:30 PM',
-      'image': 'assets/images/doctor.png',
-      'phone': '+0987654321',
-    },
-  ];
+  // List<Map<String, dynamic>> appointments = [
+  //   {
+  //     'doctorName': 'Dr. Javaid Iqbal',
+  //     'specialization': 'Cardiologist',
+  //     'clinic': 'City Heart Clinic',
+  //     'date': 'May 2, 2025',
+  //     'time': '10:00 AM',
+  //     'image': 'assets/images/doctor.png',
+  //     'phone': '+1234567890',
+  //   },
+  //   {
+  //     'doctorName': 'Dr. Sarah Khan',
+  //     'specialization': 'Dermatologist',
+  //     'clinic': 'Skin Care Center',
+  //     'date': 'May 4, 2025',
+  //     'time': '2:30 PM',
+  //     'image': 'assets/images/doctor.png',
+  //     'phone': '+0987654321',
+  //   },
+  // ];
   final List<Map<String, dynamic>> history = [
     {
       'doctorName': 'Dr. Javaid Iqbal',
@@ -71,11 +76,45 @@ class _CombinedAppointmentsScreenState
 
   String searchQuery = '';
   final FocusNode _focusNode = FocusNode();
+  int _selectedTabIndex = 0;
+  List<Map<String, dynamic>> _upcomingAppointments = [];
+  List<Map<String, dynamic>> _historyAppointments = [];
+  bool _isLoading = true;
 
   @override
   void dispose() {
     _focusNode.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAppointments();
+  }
+
+  Future<void> _fetchAppointments() async {
+    // final user = FirebaseAuth.instance.currentUser;
+    // if (user == null) return;
+
+    final patientId = '5yrxRXiijpaq16AYDshJsEKO5Zj1';
+
+    final upcoming = await AppointmentService.fetchAppointments(
+      patientId: patientId,
+      upcoming: true,
+    );
+    print(upcoming); // To check what data is being fetched
+
+    final history = await AppointmentService.fetchAppointments(
+      patientId: patientId,
+      upcoming: false,
+    );
+
+    setState(() {
+      _upcomingAppointments = upcoming;
+      _historyAppointments = history;
+      _isLoading = false;
+    });
   }
 
   @override
@@ -127,9 +166,17 @@ class _CombinedAppointmentsScreenState
             //upcomimgg
             ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: appointments.length,
+              itemCount: _upcomingAppointments.length,
               itemBuilder: (context, index) {
-                final appointment = appointments[index];
+                final appointment = _upcomingAppointments[index];
+                final String appointmentDate =
+                    appointment['appointmentDate'] != null
+                        ? DateFormat(
+                          'dd MMM yyyy',
+                        ).format(appointment['appointmentDate'])
+                        : '';
+                final String appointmentTime =
+                    appointment['appointmentTime'] ?? '';
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
@@ -149,11 +196,11 @@ class _CombinedAppointmentsScreenState
                     children: [
                       Row(
                         children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundImage: AssetImage(appointment['image']),
-                          ),
-                          const SizedBox(width: 12),
+                          // CircleAvatar(
+                          //   radius: 30,
+                          //   backgroundImage: AssetImage(appointment['image']),
+                          // ),
+                          // const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +244,7 @@ class _CombinedAppointmentsScreenState
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${appointment['date']} at ${appointment['time']}',
+                            '$appointmentDate at $appointmentTime',
                             style: const TextStyle(fontSize: 14),
                           ),
                         ],
@@ -212,7 +259,7 @@ class _CombinedAppointmentsScreenState
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            appointment['clinic'],
+                            appointment['clinicName'],
                             style: const TextStyle(fontSize: 14),
                           ),
                         ],
@@ -223,7 +270,10 @@ class _CombinedAppointmentsScreenState
                         children: [
                           ElevatedButton.icon(
                             onPressed: () {
-                              _showCallDialog(context, appointment['phone']);
+                              _showCallDialog(
+                                context,
+                                appointment['patientPhone'],
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF3ABCC0),
@@ -362,7 +412,7 @@ class _CombinedAppointmentsScreenState
               onPressed: () {
                 Navigator.pop(context);
                 setState(() {
-                  appointments.removeAt(index);
+                  //appointments.removeAt(index);
                 });
               },
               style: ElevatedButton.styleFrom(

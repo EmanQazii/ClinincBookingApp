@@ -2,9 +2,13 @@ import 'package:clinic_booking_app/screens/patients_screen/appointments_history_
 import 'package:clinic_booking_app/screens/patients_screen/patient_profile_screen.dart';
 import 'package:clinic_booking_app/screens/patients_screen/prescription_plan_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:clinic_booking_app/models/patient_model.dart';
+import 'package:clinic_booking_app/models/clinic_model.dart';
+import 'package:clinic_booking_app/services/clinic_service.dart';
 
 class PatientDashboard extends StatefulWidget {
-  const PatientDashboard({super.key});
+  final PatientModel patient;
+  const PatientDashboard({super.key, required this.patient});
 
   @override
   State<PatientDashboard> createState() => _PatientDashboardState();
@@ -13,8 +17,25 @@ class PatientDashboard extends StatefulWidget {
 class _PatientDashboardState extends State<PatientDashboard> {
   int _currentIndex = 0;
   bool _isBookTapped = false;
-  Color mainColor = Color(0xFF2C7DA0);
+  Color mainColor = Color(0xFF0A73B7);
   Color subColor = const Color(0xFF3ABCC0);
+  List<Clinic> _clinics = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchClinics();
+  }
+
+  void _fetchClinics() async {
+    final service = ClinicService();
+    final clinics = await service.getClinics();
+    setState(() {
+      _clinics = clinics;
+      _isLoading = false;
+    });
+  }
 
   void _navigateWithAnimation(BuildContext context, String route) {
     Navigator.of(context)
@@ -56,13 +77,13 @@ class _PatientDashboardState extends State<PatientDashboard> {
   Widget _getPageByRoute(String route) {
     switch (route) {
       case '/appointments_history':
-        return CombinedAppointmentsScreen();
+        return CombinedAppointmentsScreen(patient: widget.patient);
       case '/prescriptions':
         return PrescriptionScreen();
       case '/profile':
         return ProfileScreen();
       default:
-        return const PatientDashboard();
+        return PatientDashboard(patient: widget.patient);
     }
   }
 
@@ -87,7 +108,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
             const SizedBox(height: 12),
             _buildPromotionCarousel(),
             const SizedBox(height: 24),
-            _buildSpecializationsCard(),
+            _buildSpecializationsCard(context),
 
             const SizedBox(height: 20),
             _sectionTitle("Recommended Doctors for you"),
@@ -113,9 +134,11 @@ class _PatientDashboardState extends State<PatientDashboard> {
           Navigator.pop(context);
         },
       ),
-      title: const Text(
-        "Cure Connect",
-        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+      title: Text(
+        widget.patient.name != null
+            ? "Hi, ${widget.patient.name}"
+            : "Cure Connect",
+        style: TextStyle(color: mainColor, fontWeight: FontWeight.bold),
       ),
       backgroundColor: Colors.white,
       elevation: 0,
@@ -166,7 +189,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
       ),
       child: Row(
         children: [
-          //Icon(Icons.search, color: Colors.grey.shade600),
           SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -197,30 +219,35 @@ class _PatientDashboardState extends State<PatientDashboard> {
   }
 
   Widget _buildHorizontalCards(BuildContext context, {bool isDoctor = false}) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final items = isDoctor ? List.filled(5, null) : _clinics;
     return SizedBox(
-      height: isDoctor ? 230 : 190, // Different height based on type
+      height: isDoctor ? 230 : 210, // Different height based on type
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: 5,
+        itemCount: items.length,
         itemBuilder: (context, index) {
           return isDoctor
               ? _buildDoctorCard(context)
-              : _buildClinicCard(context);
+              : _buildClinicCard(context, clinic: _clinics[index]);
         },
       ),
     );
   }
 
-  Widget _buildClinicCard(BuildContext context) {
+  Widget _buildClinicCard(BuildContext context, {required Clinic clinic}) {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/clinic_details');
+        Navigator.pushNamed(context, '/clinic_details', arguments: clinic);
       },
       child: Container(
-        width: 140,
+        width: 200,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -233,35 +260,60 @@ class _PatientDashboardState extends State<PatientDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 90,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-                image: DecorationImage(
-                  image: AssetImage('assets/images/clinic.png'),
-                  fit: BoxFit.cover,
-                ),
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              child: Image.network(
+                clinic.image,
+                height: 110,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    'assets/images/clinic.png',
+                    height: 110,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  );
+                },
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(5),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    "Clinic Name",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    clinic.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
-                    "Description",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    clinic.description,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 4),
-                  Icon(Icons.location_on, size: 18, color: Color(0xFF2C7DA0)),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 16, color: Colors.amber),
+                      const SizedBox(width: 4),
+                      Text(clinic.rating.toStringAsFixed(1)),
+                      const Spacer(),
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Color(0xFF2C7DA0),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -331,13 +383,15 @@ class _PatientDashboardState extends State<PatientDashboard> {
   }
 
   Widget _buildAnimatedBookButton(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _isBookTapped = true),
       onTapUp: (_) => setState(() => _isBookTapped = false),
       onTapCancel: () => setState(() => _isBookTapped = false),
       child: AnimatedScale(
         scale: _isBookTapped ? 0.92 : 1.0,
-        duration: Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutBack,
         child: ElevatedButton(
           onPressed: () {
@@ -346,10 +400,17 @@ class _PatientDashboardState extends State<PatientDashboard> {
           style: ElevatedButton.styleFrom(
             backgroundColor: subColor,
             foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(
+              vertical: screenWidth * 0.04,
+              horizontal: screenWidth * 0.08,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
-            textStyle: const TextStyle(fontSize: 12),
+            textStyle: TextStyle(
+              fontSize: screenWidth * 0.03,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           child: const Text('Book Appointment'),
         ),
@@ -496,7 +557,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
   }
 }
 
-Widget _buildSpecializationsCard() {
+Widget _buildSpecializationsCard(BuildContext context) {
   final List<Map<String, String>> specializations = [
     {"title": "Skin Specialist", "image": "assets/icons/skin.png"},
     {"title": "Gynecologist", "image": "assets/icons/gyno.png"},
@@ -540,22 +601,33 @@ Widget _buildSpecializationsCard() {
               childAspectRatio: 0.9,
             ),
             itemBuilder: (context, index) {
-              return Column(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.grey.shade100,
-                    backgroundImage: AssetImage(
-                      specializations[index]['image']!,
+              final title = specializations[index]['title']!;
+              final image = specializations[index]['image']!;
+
+              return InkWell(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/search_results',
+                    arguments: {'specialization': title},
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Colors.grey.shade100,
+                      backgroundImage: AssetImage(image),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    specializations[index]['title']!,
-                    style: const TextStyle(fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -563,7 +635,7 @@ Widget _buildSpecializationsCard() {
         const SizedBox(height: 16),
         InkWell(
           onTap: () {
-            // Handle button tap
+            Navigator.pushNamed(context, '/search_results');
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'doctor_dashboard.dart';
 
 const Color mainColor = Color(0xFF0A73B7);
 const Color subColor = Color(0xFF3ABCC0);
@@ -153,7 +154,14 @@ class _AppointmentSessionScreenState extends State<AppointmentSessionScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     builder: (context) => DoctorDashboardScreen(),
+                      //   ),
+                      // );
+                    },
                     child: const Text(
                       "Send Prescription",
                       style: TextStyle(color: Colors.white),
@@ -170,7 +178,14 @@ class _AppointmentSessionScreenState extends State<AppointmentSessionScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     builder: (context) => DoctorDashboardScreen(),
+                      //   ),
+                      // );
+                    },
                     child: const Text(
                       "End Session",
                       style: TextStyle(color: Colors.white),

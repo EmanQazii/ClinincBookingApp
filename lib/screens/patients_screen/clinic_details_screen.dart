@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:clinic_booking_app/models/clinic_model.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:clinic_booking_app/models/reviews_model.dart';
+import 'package:clinic_booking_app/services/reviews_service.dart';
+import 'package:clinic_booking_app/models/doctor_model.dart';
+import 'package:clinic_booking_app/services/doctor_service.dart';
+import '../patients_screen/book_appointment_screen.dart';
 
 class ClinicDetailScreen extends StatefulWidget {
-  const ClinicDetailScreen({super.key});
+  final Clinic clinic;
+
+  const ClinicDetailScreen({super.key, required this.clinic});
 
   @override
   _CliClinicDetailScreenState createState() => _CliClinicDetailScreenState();
@@ -37,25 +46,25 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Clinic Name',
+            Text(
+              widget.clinic.name,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
             Row(
-              children: const [
+              children: [
                 Icon(Icons.location_on_outlined, color: mainColor),
                 SizedBox(width: 8),
-                Expanded(child: Text('Clinic ABC, town, city')),
+                Expanded(child: Text(widget.clinic.location)),
               ],
             ),
             const SizedBox(height: 8),
             Row(
-              children: const [
+              children: [
                 Icon(Icons.phone_outlined, color: mainColor),
                 SizedBox(width: 8),
-                Expanded(child: Text('+92XXXXXXXXXX')),
+                Expanded(child: Text(widget.clinic.phone)),
               ],
             ),
 
@@ -66,16 +75,29 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Container(
-              height: 160,
-              width: double.infinity,
-              decoration: BoxDecoration(color: Colors.grey.shade300),
-              child: Image.asset(
-                "assets/images/dummy_map.png",
-                fit: BoxFit.cover,
+            GestureDetector(
+              onTap: () {
+                final lat = widget.clinic.mapLocation.latitude;
+                final lng = widget.clinic.mapLocation.longitude;
+                final url = Uri.parse(
+                  'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+                );
+                launchUrl(url);
+              },
+              child: Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.grey.shade200,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  "assets/images/dummy_map.png",
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-
             const SizedBox(height: 24),
 
             const Text(
@@ -84,12 +106,13 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
             ),
             const SizedBox(height: 8),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildHoursColumn('Mon-Fri', '10:00 am - 11:00 pm'),
-                _buildHoursColumn('Sat-Sun', '12:00 pm - 10:00 pm'),
-              ],
+            Wrap(
+              spacing: 30,
+              runSpacing: 12,
+              children:
+                  widget.clinic.hours.entries.map((entry) {
+                    return _buildHoursColumn(entry.key, entry.value);
+                  }).toList(),
             ),
 
             const SizedBox(height: 24),
@@ -101,12 +124,32 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
             const SizedBox(height: 8),
 
             SizedBox(
-              height: 220,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 5, // Example count
-                itemBuilder: (context, index) {
-                  return _buildDoctorCard(context);
+              height: 270,
+              child: StreamBuilder<List<Doctor>>(
+                stream: DoctorService().getDoctorsForClinic(widget.clinic.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+
+                  final doctors = snapshot.data;
+
+                  if (doctors == null || doctors.isEmpty) {
+                    return const Center(child: Text('No doctors available'));
+                  }
+
+                  return ListView.builder(
+                    scrollDirection:
+                        Axis.horizontal, // Make the ListView horizontal
+                    itemCount: doctors.length,
+                    itemBuilder: (context, index) {
+                      return _buildDoctorCard(context, doctors[index]);
+                    },
+                  );
                 },
               ),
             ),
@@ -120,7 +163,8 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildReviewTile(),
+            buildReviewTile(widget.clinic.id),
+            //_buildReviewTile(),
           ],
         ),
       ),
@@ -147,18 +191,18 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
     );
   }
 
-  Widget _buildDoctorCard(BuildContext context) {
+  Widget _buildDoctorCard(BuildContext context, Doctor doctor) {
     return Container(
-      width: 180,
-      height: 340,
-      margin: const EdgeInsets.only(right: 12),
+      width: 200, // 2 cards visible within screen width ~360+
+      height: 350, // Set a fixed height to match the design
+      margin: const EdgeInsets.only(right: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            blurRadius: 15,
             offset: const Offset(0, 5),
           ),
         ],
@@ -168,41 +212,92 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Doctor Image or Placeholder
+            // Doctor Image
             Container(
               height: 80,
-              width: 90,
+              width: 80,
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
                 shape: BoxShape.circle,
+                image:
+                    doctor.imageUrl.isNotEmpty
+                        ? DecorationImage(
+                          image: NetworkImage(doctor.imageUrl),
+                          fit: BoxFit.cover,
+                        )
+                        : DecorationImage(
+                          image: AssetImage('assets/images/doctor.jpg'),
+                          fit: BoxFit.cover,
+                        ),
+                color: Colors.grey.shade200,
               ),
-              child: Image.asset('assets/images/doctor.png', fit: BoxFit.cover),
+              child:
+                  doctor.imageUrl.isEmpty
+                      ? const Icon(Icons.person, size: 36, color: Colors.grey)
+                      : null,
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
 
             // Doctor Name
-            const Text(
-              'Dr. Javaid Iqbal',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            Text(
+              doctor.name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 2),
 
             // Specialization
-            const Text(
-              'Cardiologist',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            Text(
+              doctor.specialization,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 5),
 
-            // Fees
-            const Text(
-              '\$50 Consultation',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            // Consultation Fee (more highlighted)
+            Text(
+              'Rs. ${doctor.consultationFee.toStringAsFixed(0)}',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: subColor, // Making it standout with subColor
+              ),
               textAlign: TextAlign.center,
             ),
 
+            const SizedBox(height: 3),
+
+            // Wait Time, Experience, Rating Row
+            Column(
+              children: [
+                // Experience displayed prominently
+                Text(
+                  'Experience: ${doctor.experience} yrs',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Rating Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    5,
+                    (index) => Icon(
+                      index < doctor.averageRating.round()
+                          ? Icons.star
+                          : Icons.star_border,
+                      size: 14,
+                      color: Colors.amber,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+
+            // Book Appointment Button
             SizedBox(
               width: double.infinity,
               child: GestureDetector(
@@ -211,11 +306,20 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
                 onTapCancel: () => setState(() => _isBookTapped = false),
                 child: AnimatedScale(
                   scale: _isBookTapped ? 0.92 : 1.0,
-                  duration: Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOutBack,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/book_appointment');
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => BookAppointmentScreen(
+                                doctor: doctor,
+                                clinic: widget.clinic,
+                              ),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: subColor,
@@ -239,47 +343,75 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
     );
   }
 
-  static Widget _buildReviewTile() {
-    return SizedBox(
-      height: 120,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 5,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Patient Name',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '"Comment line text lorem ipsum dolor sit amet, consectetur."',
-                    style: TextStyle(fontStyle: FontStyle.italic),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: List.generate(
-                      5,
-                      (index) =>
-                          const Icon(Icons.star_border, color: Colors.amber),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+  Widget buildReviewTile(String clinicId) {
+    return StreamBuilder<List<Review>>(
+      stream: ReviewService().getReviews(
+        targetType: 'clinics',
+        targetId: clinicId,
       ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final reviews = snapshot.data ?? [];
+        print('Reviews fetched: ${reviews.length}'); // Debug line
+
+        if (reviews.isEmpty) {
+          return const Text('No reviews yet.');
+        }
+
+        return SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: reviews.length,
+            itemBuilder: (context, index) {
+              final review = reviews[index];
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Container(
+                  width: 250,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        review.patientName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '"${review.comment}"',
+                        style: const TextStyle(fontStyle: FontStyle.italic),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: List.generate(
+                          5,
+                          (i) => Icon(
+                            i < double.parse(review.rating).round()
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: Colors.amber,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

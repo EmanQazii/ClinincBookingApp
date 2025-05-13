@@ -2,9 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/patient_model.dart';
+import '../screens/reset_password.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
-  const OTPVerificationScreen({super.key});
+  final String? verificationId; // This should be passed to the widget
+  final String phoneNumber;
+  final String name;
+  final String password;
+  final String email;
+  final bool isPasswordReset;
+
+  const OTPVerificationScreen({
+    super.key,
+    required this.verificationId, // Make sure you pass it when calling this widget
+    required this.phoneNumber,
+    this.name = '',
+    this.password = '',
+    this.email = '',
+    this.isPasswordReset = false, // default false for signup flow
+  });
 
   @override
   _OTPVerificationScreenState createState() => _OTPVerificationScreenState();
@@ -13,39 +31,92 @@ class OTPVerificationScreen extends StatefulWidget {
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   final TextEditingController _otpController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  late String verificationId;
-  late String phoneNumber;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-    if (args != null) {
-      verificationId = args['verificationId'];
-      phoneNumber = args['phoneNumber'];
-    }
-  }
 
   Future<void> _verifyOTP() async {
     final otp = _otpController.text.trim();
 
-    if (otp.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Please enter the OTP')));
+    if (otp.isEmpty || otp.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid 6-digit OTP')),
+      );
       return;
     }
 
-    if (otp == "123456") {
-      // Dummy OTP matched (simulation)
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Successfully signed in !')));
-      Navigator.pushNamed(context, '/patient_dashboard');
-    } else {
+    try {
+      if (widget.verificationId == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Verification ID is missing!')));
+        return;
+      }
+
+      // Step 1: Sign in with phone
+      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: widget.verificationId!,
+        smsCode: otp,
+      );
+
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+      final user = userCredential.user;
+
+      if (user == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to sign in with OTP')));
+        return;
+      }
+      if (widget.isPasswordReset) {
+        // Go to reset password screen with phone
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    ResetPasswordScreen(phoneNumber: widget.phoneNumber),
+          ),
+        );
+      } else {
+        // Step 2: Link dummy email/password to phone user
+        try {
+          final emailCredential = EmailAuthProvider.credential(
+            email: widget.email,
+            password: widget.password,
+          );
+          await user.linkWithCredential(emailCredential);
+        } catch (e) {
+          print("Linking failed (might already be linked): $e");
+        }
+
+        // Step 3: Create patient model and store in Firestore
+        final patient = PatientModel(
+          name: widget.name,
+          email: widget.email,
+          phone: widget.phoneNumber,
+          gender: '',
+          dob: null,
+          createdAt: Timestamp.now(),
+          lastLogin: Timestamp.now(),
+          rememberMe: false,
+        );
+
+        await FirebaseFirestore.instance
+            .collection('patients')
+            .doc(user.uid)
+            .set(patient.toJson());
+
+        Fluttertoast.showToast(msg: 'OTP verified and account created!');
+
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/patient_dashboard',
+          arguments: patient,
+          (route) => false,
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid OTP (dummy check failed)')),
+        SnackBar(content: Text('OTP verification failed: ${e.toString()}')),
       );
     }
   }
@@ -100,7 +171,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 children: [
                   const SizedBox(height: 20),
                   Text(
-                    "Enter the OTP sent to\n$phoneNumber",
+                    "Enter the OTP sent to\n${widget.phoneNumber}",
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 16,

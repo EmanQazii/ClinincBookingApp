@@ -1,8 +1,23 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:clinic_booking_app/models/doctor_model.dart';
+import 'package:clinic_booking_app/models/clinic_model.dart';
+import 'package:clinic_booking_app/services/appointment_service.dart';
+import '/models/appointment_model.dart';
+import '/models/patient_model.dart';
+import '/services/patient_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
-  const BookAppointmentScreen({super.key});
+  final Doctor doctor;
+  final Clinic clinic;
+
+  const BookAppointmentScreen({
+    Key? key,
+    required this.doctor,
+    required this.clinic,
+  }) : super(key: key);
 
   @override
   _BookAppointmentScreenState createState() => _BookAppointmentScreenState();
@@ -18,6 +33,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   bool _isConfirmTapped = false;
   bool _isCancelTapped = false;
 
+  String patientId = ''; // Store patientId here
+  PatientModel? patient; // Store patient details
+
   final List<String> allSlots = [
     '2:00 pm - 3:00 pm',
     '3:00 pm - 4:00 pm',
@@ -27,6 +45,33 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     '7:00 pm - 8:00 pm',
     '8:00 pm - 9:00 pm',
   ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchPatientDetails();
+  }
+
+  Future<void> _fetchPatientDetails() async {
+    try {
+      // Get the currently logged-in user's UID
+      final user = FirebaseAuth.instance.currentUser;
+      final uid = '5yrxRXiijpaq16AYDshJsEKO5Zj1';
+      if (uid != null) {
+        // Fetch the patient's document from Firestore using the UID
+        final patientData = await PatientService().getPatientById(uid);
+
+        if (patientData != null) {
+          setState(() {
+            patient = patientData;
+            patientId = uid; // Using user UID as the patientId
+          });
+          print('Patient Data: ${patientData.name}'); // ✅ safe now
+        }
+      }
+    } catch (e) {
+      print("Error fetching patient data: $e");
+    }
+  }
 
   void _selectDate() async {
     DateTime? picked = await showDatePicker(
@@ -37,13 +82,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       builder: (context, child) {
         return Theme(
           data: ThemeData(
-            primaryColor: mainColor,
-            secondaryHeaderColor: subColor,
             colorScheme: ColorScheme.light(
               primary: mainColor,
               secondary: subColor,
             ),
-            scaffoldBackgroundColor: Colors.white,
           ),
           child: child!,
         );
@@ -56,11 +98,45 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
   }
 
-  void _confirmAppointment() {
+  void _confirmAppointment() async {
     if (selectedSlot.isEmpty) {
       _showDialog('Please select a time slot!');
     } else {
-      _showDialog('Your Appointment is Confirmed!');
+      if (patient != null) {
+        String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+
+        // Generate unique appointment ID
+        final docRef =
+            FirebaseFirestore.instance.collection('appointments').doc();
+        String appointmentId = docRef.id;
+        AppointmentModel appointment = AppointmentModel(
+          appointmentId: appointmentId,
+          doctorId: widget.doctor.id,
+          doctorName: widget.doctor.name,
+          specialization: widget.doctor.specialization,
+          clinicId: widget.clinic.id,
+          clinicName: widget.clinic.name,
+          appointmentDate: formattedDate,
+          appointmentTime: selectedSlot,
+          patientId: patientId, // Use patientId
+          patientName: patient!.name, // Use patient's name
+          patientPhone: patient!.phone, // Use patient's phone
+          symptoms: "Fever", // Replace with actual data
+          labTestsRequested: ["Blood Tets"], // Replace with actual data
+          diagnosis: "Flu", // Replace with actual data
+          prescription: "Paracetamol", // Replace with actual data
+          status: 'Pending',
+          bookedAt: Timestamp.now(), // Replace with actual status logic
+        );
+
+        // Call the AppointmentService to book the appointment
+        await AppointmentService.bookAppointment(appointment);
+
+        // Show success dialog
+        _showDialog('Your Appointment is Confirmed!');
+      } else {
+        _showDialog('Error: Unable to fetch patient data.');
+      }
     }
   }
 
@@ -137,6 +213,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Widget _buildDoctorCard() {
+    final doctor = widget.doctor;
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -152,21 +230,21 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           ),
           SizedBox(height: 10),
           Text(
-            'Doctor Name',
+            doctor.name,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          Text('Specialization', style: TextStyle(color: Colors.grey)),
+          Text(doctor.specialization, style: TextStyle(color: Colors.grey)),
           SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
               5,
-              (index) => Icon(Icons.star_border, color: mainColor),
+              (index) => Icon(Icons.star, color: mainColor, size: 20),
             ),
           ),
           SizedBox(height: 10),
           Text(
-            'Experience/Expertise:\nSupporting line text lorem ipsum dolor sit amet, consectetur.',
+            doctor.qualification,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey),
           ),
@@ -246,11 +324,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isSelected) {
-            selectedSlot = '';
-          } else {
-            selectedSlot = slot;
-          }
+          selectedSlot = isSelected ? '' : slot;
         });
       },
       child: AnimatedContainer(
@@ -270,6 +344,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Widget _buildAppointmentDetails() {
+    final clinic = widget.clinic;
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -288,7 +364,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             children: [
               Icon(Icons.location_on, color: mainColor),
               SizedBox(width: 10),
-              Text('Clinic ABC, town, city'),
+              Expanded(child: Text(clinic.name)),
             ],
           ),
           SizedBox(height: 10),

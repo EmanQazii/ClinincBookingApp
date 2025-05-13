@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../services/patient_service.dart';
+import 'otp_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:clinic_booking_app/models/doctor_model.dart';
+import 'package:clinic_booking_app/services/doctor_service.dart';
+import 'doctors_screen/doctor_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -8,36 +15,218 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailOrPhoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool rememberMe = true;
+  final Color mainColor = const Color(0xFF0A73B7);
+  final Color subColor = const Color(0xFF00BFA6);
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  Future<void> _handleLogin(String role) async {
+    String? input = _emailOrPhoneController.text.trim();
+    if (input.startsWith('0') && input.length == 11) {
+      input = '+92${input.substring(1)}';
+    }
+    final password = _passwordController.text.trim();
+
+    if (input.isEmpty || password.isEmpty) {
+      _showMessage("Please enter both fields");
+      return;
+    }
+
+    late String email;
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
+    if (emailRegex.hasMatch(input)) {
+      email = input;
+    } else {
+      final cleanedPhone = input.replaceAll(RegExp(r'[^\d]'), '');
+      email = '$cleanedPhone@cureconnect.com';
+    }
+    try {
+      if (role == 'patient') {
+        final user = await AuthService().signInWithEmailAndPassword(
+          email,
+          password,
+        );
+
+        if (user == null) {
+          _showMessage("No user found for this credential");
+          return;
+        }
+
+        final patient = await PatientService().getPatientByEmail(email);
+
+        if (patient == null) {
+          _showMessage("No patient data found");
+          return;
+        }
+
+        Navigator.pushNamed(context, '/patient_dashboard', arguments: patient);
+      } else if (role == 'doctor') {
+        // For doctors, use DoctorService to fetch and validate credentials
+        final result = await DoctorService().getDoctorByCredentials(
+          email,
+          password,
+        );
+        if (result != null) {
+          final Doctor doctor = result.doctor;
+          final String clinicId = result.clinicId;
+
+          // Proceed with login — you now have both
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) =>
+                      DoctorDashboardScreen(doctor: doctor, clinicId: clinicId),
+            ),
+          );
+        } else {
+          // Show error
+          print('Invalid credentials');
+        }
+      }
+    } catch (e) {
+      _showMessage("Login failed: ${e.toString()}");
+    }
+  }
+
+  // try {
+  //       final user = await AuthService().signInWithEmailAndPassword(
+  //         email,
+  //         password,
+  //       );
+  //       final patient = await PatientService().getPatientByEmail(email);
+
+  //       if (user == null) {
+  //         _showMessage("No user found for this credential");
+  //         return;
+  //       }
+
+  //       if (rememberMe) {
+  //         final prefs = await SharedPreferences.getInstance();
+  //         await prefs.setString('saved_email', input);
+  //         await prefs.setString('saved_password', password);
+  //         await prefs.setBool('remember_me', true);
+  //       }
+
+  //       Navigator.pushNamed(
+  //         context,
+  //         role == 'patient' ? '/patient_dashboard' : '/appointment_session',
+  //         arguments: patient,
+  //       );
+  //     } catch (e) {
+  //       _showMessage("Login failed: ${e.toString()}");
+  //     }
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showForgotPasswordDialog() {
+    final phoneController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Colors.white, // Dialog background color
+            title: Text(
+              "Reset Password",
+              style: TextStyle(color: mainColor), // Title color
+            ),
+            content: TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                hintText: "Enter your phone number",
+                prefixText: '+92 ',
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(
+                    color: mainColor,
+                  ), // Line color when not focused
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: subColor),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  final phone = "+92${phoneController.text.trim()}";
+
+                  FirebaseAuth.instance.verifyPhoneNumber(
+                    phoneNumber: phone,
+                    timeout: const Duration(seconds: 60),
+                    verificationCompleted: (PhoneAuthCredential credential) {
+                      // Auto-sign in not required here for password reset
+                    },
+                    verificationFailed: (FirebaseAuthException e) {
+                      // Handle error
+                      print("Verification failed: ${e.message}");
+                    },
+                    codeSent: (String verificationId, int? resendToken) {
+                      if (!mounted) return;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => OTPVerificationScreen(
+                                verificationId: verificationId,
+                                phoneNumber: phone,
+                                isPasswordReset: true,
+                              ),
+                        ),
+                      );
+                    },
+                    codeAutoRetrievalTimeout: (String verificationId) {
+                      // Optional timeout handling
+                    },
+                  );
+                },
+                child: Text(
+                  "Send OTP",
+                  style: TextStyle(color: mainColor), // Button text color
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String role = ModalRoute.of(context)!.settings.arguments as String;
-    const Color mainColor = Color(0xFF0A73B7);
-    const Color subColor = Color(0xFF00BFA6);
 
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Column(
           children: [
-            // Top curved gradient shape
             ClipPath(
               clipper: TopCurveClipper(),
               child: Container(
                 width: double.infinity,
                 height: 300,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF0A73B7), Color(0xFF00BFA6)],
+                    colors: [mainColor, subColor],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                 ),
                 child: const Padding(
-                  padding: EdgeInsets.only(left: 24.0, bottom: 0),
+                  padding: EdgeInsets.only(left: 24.0),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -53,37 +242,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-
-            // Form content
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 15),
-                  Text(
-                    "Email / Phone No",
-                    style: TextStyle(
-                      color: mainColor,
-                      fontFamily: "Montserrat",
-                    ),
-                  ),
+                  Text("Email / Phone No", style: TextStyle(color: mainColor)),
                   const SizedBox(height: 3),
                   TextField(
+                    controller: _emailOrPhoneController,
                     cursorColor: subColor,
-                    decoration: _inputDecoration("example@gmail.com"),
+                    decoration: _inputDecoration("Enter Phone # or Email"),
                   ),
                   const SizedBox(height: 20),
-
-                  Text(
-                    "Password",
-                    style: TextStyle(
-                      color: mainColor,
-                      fontFamily: "Montserrat",
-                    ),
-                  ),
+                  Text("Password", style: TextStyle(color: mainColor)),
                   const SizedBox(height: 3),
                   TextField(
+                    controller: _passwordController,
                     obscureText: _obscurePassword,
                     cursorColor: subColor,
                     decoration: _inputDecoration(
@@ -104,40 +280,29 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 7),
-
-                  // Remember Me and Forgot Password
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          Theme(
-                            data: Theme.of(context).copyWith(
-                              unselectedWidgetColor:
-                                  mainColor, // Border color when unchecked
-                              checkboxTheme: CheckboxThemeData(
-                                fillColor: WidgetStateProperty.all(
-                                  mainColor,
-                                ), // Fill when checked
-                              ),
-                            ),
-                            child: Checkbox(
-                              value: rememberMe,
-                              onChanged: (val) {
-                                setState(() {
-                                  rememberMe = val ?? false;
-                                });
-                              },
-                            ),
+                          Checkbox(
+                            activeColor: subColor,
+                            value: rememberMe,
+                            onChanged: (val) {
+                              setState(() {
+                                rememberMe = val ?? false;
+                              });
+                            },
                           ),
                           const Text("Remember me"),
                         ],
                       ),
                       TextButton(
-                        onPressed: () {},
-                        child: const Text(
+                        onPressed: () {
+                          _showForgotPasswordDialog();
+                        },
+                        child: Text(
                           "Forgot password?",
                           style: TextStyle(color: mainColor),
                         ),
@@ -145,20 +310,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 25),
-
-                  // Login Button
                   SizedBox(
                     width: double.infinity,
                     height: 40,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          role == 'patient'
-                              ? '/patient_dashboard'
-                              : '/appointment_session',
-                        );
-                      },
+                      onPressed: () => _handleLogin(role),
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
@@ -169,24 +325,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         "SIGN IN",
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 25),
-
-                  // Sign up link
                   role == 'patient'
                       ? Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text("Don’t have an account? "),
                           GestureDetector(
-                            onTap: () {
-                              Navigator.pushNamed(context, '/signup');
-                            },
+                            onTap:
+                                () => Navigator.pushNamed(context, '/signup'),
                             child: Text(
                               "Sign up",
                               style: TextStyle(
@@ -201,7 +353,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       : Center(
                         child: Text(
                           "Can't login? Contact support.",
-                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: mainColor,
                             fontStyle: FontStyle.italic,
@@ -217,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  static InputDecoration _inputDecoration(String hintText) {
+  InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: const TextStyle(color: Colors.grey),
@@ -227,14 +378,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-  // Widget _socialIcon(String path) {
-  //   return CircleAvatar(
-  //     radius: 20,
-  //     backgroundColor: Colors.white,
-  //     child: Image.asset(path, height: 22),
-  //   );
-  // }
 }
 
 class TopCurveClipper extends CustomClipper<Path> {
