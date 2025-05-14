@@ -1,72 +1,69 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:clinic_booking_app/models/appointment_model.dart';
 import 'package:intl/intl.dart';
-import 'package:clinic_booking_app/screens/doctors_screen/appointment_record_screen.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 
 const mainColor = Color(0xFF0A73B7);
 const subColor = Color(0xFF3ABCC0);
 
 class AppointmentDetailScreen extends StatelessWidget {
-  final Appointment appointment;
+  final AppointmentModel appointment;
 
   const AppointmentDetailScreen({Key? key, required this.appointment})
     : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    String formattedDate = DateFormat.yMMMMEEEEd().format(appointment.date);
-    String formattedTime = DateFormat.jm().format(
-      DateFormat("HH:mm").parse(appointment.time),
-    );
-
-    // Dummy data
-    final List<Map<String, String>> medicines = [
-      {'name': 'Amoxicillin', 'dosage': '500mg', 'timing': '3 times a day'},
-      {
-        'name': 'Cough Syrup',
-        'dosage': '10ml',
-        'timing': '2 times a day after meals',
-      },
-    ];
-    final String notes =
-        'Plenty of fluids and rest recommended. Return in 1 week if symptoms persist.';
-
-    final diagnosis =
-        "Acute Bronchitis – inflammation of bronchial tubes with cough and wheezing.";
-    final List tests = ['Chest X-Ray', 'CBC (Complete Blood Count)'];
+    List<Map<String, String>> medicines =
+        appointment.prescription!.map((item) {
+          final parts = item.split(',');
+          return {
+            'name': parts.length > 0 ? parts[0] : '',
+            'duration': parts.length > 1 ? parts[1] : '',
+            '/day': parts.length > 2 ? parts[2] : '',
+            'timings': parts.length > 3 ? parts[3] : '',
+          };
+        }).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Appointment Details',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: mainColor,
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             buildCard("Patient Information", Icons.person, [
-              buildRow("Name", appointment.name),
-              Divider(),
+              buildRow("Name", appointment.patientName),
+              const Divider(),
               buildRow("DOB", "March 25, 1990"),
-              Divider(),
-              buildRow("Gender", appointment.gender),
-              Divider(),
-              buildRow("Issue", appointment.issue),
-              Divider(),
-              buildRow("Type", appointment.type),
+              const Divider(),
+              buildRow("Gender", appointment.specialization),
+              const Divider(),
+              buildRow("Issue", appointment.diagnosis ?? "N/A"),
+              const Divider(),
+              buildRow("Phone", appointment.patientPhone),
             ]),
-
             buildCard("Session Information", Icons.schedule, [
-              buildRow("Date", formattedDate),
-              Divider(),
-              buildRow("Time", formattedTime),
-              Divider(),
+              buildRow("Date", appointment.appointmentDate),
+              const Divider(),
+              buildRow("Time", appointment.appointmentTime),
+              const Divider(),
               buildRow("Duration", "1 Hour"),
             ]),
             buildCard("Diagnosis", Icons.medical_services, [
-              Text(diagnosis, style: TextStyle(fontSize: 14)),
+              Text(
+                appointment.diagnosis ?? "N/A",
+                style: const TextStyle(fontSize: 14),
+              ),
             ]),
             buildCard("Prescription", Icons.description, [
               Row(
@@ -78,17 +75,26 @@ class AppointmentDetailScreen extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
+                  SizedBox(width: 3),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      "Duration",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  SizedBox(width: 7),
                   Expanded(
                     flex: 2,
                     child: Text(
-                      "Dosage",
+                      "/Day",
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: Text(
-                      "Timing",
+                      "Timings",
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -101,8 +107,9 @@ class AppointmentDetailScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(flex: 3, child: Text(med['name']!)),
-                        Expanded(flex: 2, child: Text(med['dosage']!)),
-                        Expanded(flex: 3, child: Text(med['timing']!)),
+                        Expanded(flex: 3, child: Text(med['duration']!)),
+                        Expanded(flex: 2, child: Text(med['/day']!)),
+                        Expanded(flex: 4, child: Text(med['timings']!)),
                       ],
                     ),
                     const Divider(),
@@ -110,35 +117,42 @@ class AppointmentDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text("Notes:", style: TextStyle(fontWeight: FontWeight.bold)),
-              Text(notes),
+              const Text(
+                "Notes:",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(appointment.notes),
             ]),
             buildCard("Tests (if any)", Icons.science, [
-              for (var test in tests)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text("• $test", style: TextStyle(fontSize: 14)),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Text(
+                  "• ${appointment.labTestsRequested}",
+                  style: const TextStyle(fontSize: 14),
                 ),
+              ),
             ]),
           ],
         ),
       ),
-      // bottomNavigationBar: Padding(
-      //   padding: const EdgeInsets.all(16),
-      //   child: ElevatedButton.icon(
-      //     style: ElevatedButton.styleFrom(
-      //       backgroundColor: subColor,
-      //       padding: EdgeInsets.symmetric(vertical: 14),
-      //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      //     ),
-      //     icon: Icon(Icons.edit),
-      //     label: Text("Edit Record"),
-      //     onPressed: () {
-      //       // Handle edit
-      //       Navigator.push(context, MaterialPageRoute(builder: (context)=>DoctorDashboardScreen()));
-      //     },
-      //   ),
-      // ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: subColor,
+            padding: EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          icon: Icon(Icons.download, color: Colors.white),
+          label: Text(
+            "Download Prescription",
+            style: TextStyle(color: Colors.white),
+          ),
+          onPressed: () => _generatePDF(context, medicines),
+        ),
+      ),
     );
   }
 
@@ -146,19 +160,19 @@ class AppointmentDetailScreen extends StatelessWidget {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(icon, color: mainColor),
-                SizedBox(width: 8),
+                const SizedBox(width: 9),
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
@@ -166,7 +180,7 @@ class AppointmentDetailScreen extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             ...children,
           ],
         ),
@@ -181,11 +195,92 @@ class AppointmentDetailScreen extends StatelessWidget {
         children: [
           Expanded(
             flex: 3,
-            child: Text(label, style: TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           Expanded(flex: 5, child: Text(value)),
         ],
       ),
+    );
+  }
+
+  Future<void> _generatePDF(
+    BuildContext context,
+    List<Map<String, String>> medicines,
+  ) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Appointment Report',
+                style: pw.TextStyle(
+                  fontSize: 22,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Text('Patient Name: ${appointment.patientName}'),
+              pw.Text('Phone: ${appointment.patientPhone}'),
+              pw.Text('Issue: ${appointment.diagnosis ?? "N/A"}'),
+              pw.Text('Date: ${appointment.appointmentDate}'),
+              pw.Text('Time: ${appointment.appointmentTime}'),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Diagnosis:',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text(appointment.diagnosis ?? "N/A"),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Prescription:',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Table.fromTextArray(
+                context: context,
+                cellAlignment: pw.Alignment.centerLeft,
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                headers: ['Medicine', 'Duration', '/Day', 'Timings'],
+                data:
+                    medicines.map((med) {
+                      return [
+                        med['name'],
+                        med['duration'],
+                        med['/day'],
+                        med['timings'],
+                      ];
+                    }).toList(),
+              ),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Notes:',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text(appointment.notes),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Lab Tests:',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text(appointment.labTestsRequested?.join(', ') ?? 'None'),
+            ],
+          );
+        },
+      ),
+    );
+
+    // final output = await getTemporaryDirectory();
+    // final file = File('${output.path}/appointment_report.pdf');
+    //await file.writeAsBytes(await pdf.save());
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
     );
   }
 }

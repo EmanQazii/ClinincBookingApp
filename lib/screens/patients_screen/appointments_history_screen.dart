@@ -3,6 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import '/models/patient_model.dart';
 import 'package:clinic_booking_app/services/appointment_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 const Color mainColor = Color(0xFF0A73B7);
 const Color subColor = Color(0xFF3ABCC0);
@@ -20,63 +24,8 @@ class CombinedAppointmentsScreen extends StatefulWidget {
 
 class _CombinedAppointmentsScreenState
     extends State<CombinedAppointmentsScreen> {
-  // List<Map<String, dynamic>> appointments = [
-  //   {
-  //     'doctorName': 'Dr. Javaid Iqbal',
-  //     'specialization': 'Cardiologist',
-  //     'clinic': 'City Heart Clinic',
-  //     'date': 'May 2, 2025',
-  //     'time': '10:00 AM',
-  //     'image': 'assets/images/doctor.png',
-  //     'phone': '+1234567890',
-  //   },
-  //   {
-  //     'doctorName': 'Dr. Sarah Khan',
-  //     'specialization': 'Dermatologist',
-  //     'clinic': 'Skin Care Center',
-  //     'date': 'May 4, 2025',
-  //     'time': '2:30 PM',
-  //     'image': 'assets/images/doctor.png',
-  //     'phone': '+0987654321',
-  //   },
-  // ];
-  final List<Map<String, dynamic>> history = [
-    {
-      'doctorName': 'Dr. Javaid Iqbal',
-      'specialization': 'Cardiologist',
-      'clinic': 'City Heart Clinic',
-      'date': DateTime(2025, 4, 10),
-      'diagnosis': 'Hypertension',
-      'prescription': {
-        'medicines': [
-          {'name': 'Amlodipine', 'dosage': '5mg', 'timing': 'Morning'},
-          {'name': 'Losartan', 'dosage': '50mg', 'timing': 'Night'},
-        ],
-        'notes': 'Monitor blood pressure daily.\nReduce salt intake.',
-      },
-    },
-    {
-      'doctorName': 'Dr. Sarah Khan',
-      'specialization': 'Dermatologist',
-      'clinic': 'Skin Care Center',
-      'date': DateTime(2025, 3, 5),
-      'diagnosis': 'Acne Vulgaris',
-      'prescription': {
-        'medicines': [
-          {
-            'name': 'Acne Cream',
-            'dosage': 'Apply thin layer',
-            'timing': 'Morning, Evening',
-          },
-        ],
-        'notes': 'Avoid direct sunlight after application.',
-      },
-    },
-  ];
-
   String searchQuery = '';
   final FocusNode _focusNode = FocusNode();
-  int _selectedTabIndex = 0;
   List<Map<String, dynamic>> _upcomingAppointments = [];
   List<Map<String, dynamic>> _historyAppointments = [];
   bool _isLoading = true;
@@ -94,19 +43,15 @@ class _CombinedAppointmentsScreenState
   }
 
   Future<void> _fetchAppointments() async {
-    // final user = FirebaseAuth.instance.currentUser;
-    // if (user == null) return;
-
-    final patientId = '5yrxRXiijpaq16AYDshJsEKO5Zj1';
+    final user = FirebaseAuth.instance.currentUser!;
 
     final upcoming = await AppointmentService.fetchAppointments(
-      patientId: patientId,
+      patientId: user.uid,
       upcoming: true,
     );
-    print(upcoming); // To check what data is being fetched
 
     final history = await AppointmentService.fetchAppointments(
-      patientId: patientId,
+      patientId: user.uid,
       upcoming: false,
     );
 
@@ -120,24 +65,22 @@ class _CombinedAppointmentsScreenState
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final dateFormat = DateFormat('MMMM d, yyyy');
 
-    DateTime getDate(dynamic dateValue) {
-      if (dateValue is DateTime) return dateValue;
-      return dateFormat.parse(dateValue.toString());
+    List<Map<String, dynamic>> getRecentAppointments() {
+      return _historyAppointments.where((appt) {
+        final date = appt['appointmentDate'];
+        return date != null &&
+            date.isAfter(now.subtract(const Duration(days: 30)));
+      }).toList();
     }
 
-    final recentAppointments =
-        history.where((appt) {
-          final parsedDate = getDate(appt['date']);
-          return parsedDate.isAfter(now.subtract(const Duration(days: 30)));
-        }).toList();
-
-    final pastAppointments =
-        history.where((appt) {
-          final parsedDate = getDate(appt['date']);
-          return parsedDate.isBefore(now.subtract(const Duration(days: 30)));
-        }).toList();
+    List<Map<String, dynamic>> getPastAppointments() {
+      return _historyAppointments.where((appt) {
+        final date = appt['appointmentDate'];
+        return date != null &&
+            date.isBefore(now.subtract(const Duration(days: 30)));
+      }).toList();
+    }
 
     return DefaultTabController(
       length: 2,
@@ -152,7 +95,6 @@ class _CombinedAppointmentsScreenState
           ),
           centerTitle: true,
           iconTheme: const IconThemeData(color: Colors.white),
-
           bottom: TabBar(
             indicatorColor: subColor,
             labelColor: Colors.white,
@@ -163,161 +105,23 @@ class _CombinedAppointmentsScreenState
         ),
         body: TabBarView(
           children: [
-            //upcomimgg
-            ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _upcomingAppointments.length,
-              itemBuilder: (context, index) {
-                final appointment = _upcomingAppointments[index];
-                final String appointmentDate =
-                    appointment['appointmentDate'] != null
-                        ? DateFormat(
-                          'dd MMM yyyy',
-                        ).format(appointment['appointmentDate'])
-                        : '';
-                final String appointmentTime =
-                    appointment['appointmentTime'] ?? '';
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _upcomingAppointments.isEmpty
+                ? const Center(
+                  child: Text(
+                    'No upcoming appointments',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
+                : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color.fromARGB(255, 103, 150, 159),
-                        blurRadius: 8,
-                        offset: const Offset(2, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          // CircleAvatar(
-                          //   radius: 30,
-                          //   backgroundImage: AssetImage(appointment['image']),
-                          // ),
-                          // const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  appointment['doctorName'],
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  appointment['specialization'],
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.info_outline,
-                              color: Color(0xFF3ABCC0),
-                            ),
-                            onPressed: () {
-                              // Open detail screen or show dialog if needed
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today,
-                            size: 18,
-                            color: Color(0xFF2C7DA0),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$appointmentDate at $appointmentTime',
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 18,
-                            color: Color(0xFF2C7DA0),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            appointment['clinicName'],
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              _showCallDialog(
-                                context,
-                                appointment['patientPhone'],
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF3ABCC0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.call,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                            label: const Text(
-                              'Call',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              _showCancelDialog(context, index);
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF3ABCC0),
-                              side: const BorderSide(color: Color(0xFF3ABCC0)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.cancel,
-                              size: 18,
-                              color: Color(0xFF3ABCC0),
-                            ),
-                            label: const Text('Cancel'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-
-            //history recs
+                  itemCount: _upcomingAppointments.length,
+                  itemBuilder: (context, index) {
+                    final appointment = _upcomingAppointments[index];
+                    return _buildUpcomingCard(appointment, index);
+                  },
+                ),
             Column(
               children: [
                 Padding(
@@ -328,13 +132,16 @@ class _CombinedAppointmentsScreenState
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: [
-                      if (recentAppointments.isNotEmpty)
+                      if (getRecentAppointments().isNotEmpty)
                         _buildSection(
                           'Recent Appointments',
-                          recentAppointments,
+                          getRecentAppointments(),
                         ),
-                      if (pastAppointments.isNotEmpty)
-                        _buildSection('Past Appointments', pastAppointments),
+                      if (getPastAppointments().isNotEmpty)
+                        _buildSection(
+                          'Past Appointments',
+                          getPastAppointments(),
+                        ),
                     ],
                   ),
                 ),
@@ -346,90 +153,121 @@ class _CombinedAppointmentsScreenState
     );
   }
 
-  //upcoming appointments
+  Widget _buildUpcomingCard(Map<String, dynamic> appointment, int index) {
+    final String appointmentDate =
+        appointment['appointmentDate'] != null
+            ? DateFormat('dd MMM yyyy').format(appointment['appointmentDate'])
+            : '';
+    final String appointmentTime = appointment['appointmentTime'] ?? '';
 
-  void _showCallDialog(BuildContext context, String phoneNumber) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Place Call'),
-          backgroundColor: Colors.white, // White background
-          content: Text('Do you want to call $phoneNumber?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  color: Color(0xFF2C7DA0),
-                ), // Theme color for text
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color.fromARGB(255, 103, 150, 159),
+            blurRadius: 8,
+            offset: const Offset(2, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appointment['doctorName'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      appointment['specialization'],
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // TODO: Add call functionality here
-                print('Calling $phoneNumber...');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(
-                  0xFF2C7DA0,
-                ), // Theme color for button background
-                foregroundColor: Colors.white, // Text color
+              IconButton(
+                icon: const Icon(Icons.info_outline, color: subColor),
+                onPressed: () {},
               ),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_today,
+                size: 18,
+                color: Color(0xFF2C7DA0),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$appointmentDate at $appointmentTime',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 18, color: Color(0xFF2C7DA0)),
+              const SizedBox(width: 6),
+              Text(
+                appointment['clinicName'],
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ElevatedButton.icon(
+                onPressed:
+                    () => _showCallDialog(context, appointment['patientPhone']),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: subColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.call, size: 18, color: Colors.white),
+                label: const Text(
+                  'Call',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _showCancelDialog(context, index),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: subColor,
+                  side: const BorderSide(color: subColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.cancel, size: 18, color: subColor),
+                label: const Text('Cancel'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  void _showCancelDialog(BuildContext context, int index) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Cancel Appointment'),
-          backgroundColor: Colors.white, // White background
-          content: const Text('Do you really want to cancel this appointment?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-              },
-              child: const Text(
-                'No',
-                style: TextStyle(
-                  color: Color(0xFF2C7DA0),
-                ), // Theme color for text
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() {
-                  //appointments.removeAt(index);
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(
-                  0xFF2C7DA0,
-                ), // Theme color for button background
-                foregroundColor: Colors.white, // Text color
-              ),
-              child: const Text('Yes'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  //history recs
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -464,26 +302,23 @@ class _CombinedAppointmentsScreenState
   }
 
   Widget _buildSection(String title, List<Map<String, dynamic>> appointments) {
-    final filteredAppointments =
-        appointments.where((appointment) {
-          return appointment['doctorName'].toLowerCase().contains(
+    final filtered =
+        appointments.where((appt) {
+          return (appt['doctorName'] ?? '').toLowerCase().contains(
                 searchQuery.toLowerCase(),
               ) ||
-              appointment['clinic'].toLowerCase().contains(
+              (appt['clinicName'] ?? '').toLowerCase().contains(
                 searchQuery.toLowerCase(),
               ) ||
-              appointment['specialization'].toLowerCase().contains(
+              (appt['specialization'] ?? '').toLowerCase().contains(
                 searchQuery.toLowerCase(),
               ) ||
-              (appointment['diagnosis'] ?? '').toLowerCase().contains(
-                searchQuery.toLowerCase(),
-              ) ||
-              appointment['date'].toString().toLowerCase().contains(
+              (appt['diagnosis'] ?? '').toLowerCase().contains(
                 searchQuery.toLowerCase(),
               );
         }).toList();
 
-    if (filteredAppointments.isEmpty) return const SizedBox.shrink();
+    if (filtered.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,88 +333,121 @@ class _CombinedAppointmentsScreenState
           ),
         ),
         const SizedBox(height: 12),
-        ...filteredAppointments.map(
-          (appointment) => _buildAppointmentCard(appointment),
-        ),
+        ...filtered.map((appt) => _buildHistoryCard(appt)),
       ],
     );
   }
 
-  Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
-    final dateFormatted = DateFormat('dd/MM/yyyy').format(appointment['date']);
+  Widget _buildHistoryCard(Map<String, dynamic> appointment) {
+    final date = DateFormat(
+      'dd MMM yyyy',
+    ).format(appointment['appointmentDate']);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 400),
-            pageBuilder:
-                (_, animation, __) => FadeTransition(
-                  opacity: animation,
-                  child: DiagnosisDetailScreen(appointment: appointment),
-                ),
+          MaterialPageRoute(
+            builder:
+                // (context) => DiagnosisDetailScreen(appointment: appointment),
+                (context) => DiagnosisDetailScreen(appointment: appointment),
           ),
         );
       },
-      child: Container(
+      child: Card(
         margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: subColor.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(2, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.medical_services_rounded, color: mainColor, size: 40),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    appointment['doctorName'],
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    appointment['specialization'],
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  Text(
-                    appointment['clinic'],
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 4,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                appointment['doctorName'],
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
+              const SizedBox(height: 4),
+              Text(
+                '${appointment['specialization']} • ${appointment['clinicName']}',
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text('Date: $date', style: const TextStyle(fontSize: 14)),
+              const SizedBox(height: 4),
+              if (appointment['diagnosis'] != null)
                 Text(
-                  dateFormatted,
-                  style: const TextStyle(color: mainColor, fontSize: 13),
+                  'Diagnosis: ${appointment['diagnosis']}',
+                  style: const TextStyle(fontSize: 14),
                 ),
-                const SizedBox(height: 8),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: subColor,
-                  size: 18,
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showCallDialog(BuildContext context, String phoneNumber) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Place Call'),
+          backgroundColor: Colors.white,
+          content: Text('Do you want to call $phoneNumber?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: subColor)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: subColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCancelDialog(BuildContext context, int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Cancel Appointment'),
+          backgroundColor: Colors.white,
+          content: const Text('Do you really want to cancel this appointment?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('No', style: TextStyle(color: subColor)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  _upcomingAppointments.removeAt(index);
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: subColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -592,12 +460,13 @@ class DiagnosisDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prescription = appointment['prescription'];
+    final List<dynamic> medicines = prescription is List ? prescription : [];
+    final String notes = prescription is Map ? prescription['notes'] ?? '' : '';
+    final date = DateFormat(
+      'dd MMM yyyy',
+    ).format(appointment['appointmentDate']);
     final String prescriptionText =
         prescription is Map ? _buildPrescriptionText(prescription) : '';
-
-    final List<dynamic> medicines =
-        prescription is Map ? prescription['medicines'] ?? [] : [];
-    final String notes = prescription is Map ? prescription['notes'] ?? '' : '';
 
     return Scaffold(
       appBar: AppBar(
@@ -616,25 +485,22 @@ class DiagnosisDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Session Info Card ---
             _sectionCard(
               title: 'Session Information',
               children: [
-                _buildDetailTile('Doctor Name', appointment['doctorName']),
+                _buildDetailTile(
+                  'Doctor Name',
+                  appointment['doctorName'] ?? 'N/A',
+                ),
                 _buildDetailTile(
                   'Specialization',
-                  appointment['specialization'],
+                  appointment['specialization'] ?? 'N/A',
                 ),
-                _buildDetailTile('Clinic', appointment['clinic']),
-                _buildDetailTile(
-                  'Date',
-                  '${appointment['date'].day}/${appointment['date'].month}/${appointment['date'].year}',
-                ),
+                _buildDetailTile('Clinic', appointment['clinicName'] ?? 'N/A'),
+                _buildDetailTile('Date', "$date"),
               ],
             ),
             const SizedBox(height: 20),
-
-            // --- Diagnosis Info Card ---
             _sectionCard(
               title: 'Diagnosis',
               children: [
@@ -645,8 +511,6 @@ class DiagnosisDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
-            /// --- Prescription Info Card ---
             Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -721,6 +585,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                                     TextButton(
                                       onPressed: () {
                                         Navigator.pop(context);
+                                        generatePdf(appointment);
                                       },
                                       child: const Text(
                                         'Yes',
@@ -736,8 +601,6 @@ class DiagnosisDetailScreen extends StatelessWidget {
                       ],
                     ),
                     const Divider(height: 20, thickness: 1),
-
-                    // Table header
                     Row(
                       children: const [
                         Expanded(
@@ -746,60 +609,64 @@ class DiagnosisDetailScreen extends StatelessWidget {
                             'Medicine',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            'Dosage',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                         Expanded(
                           flex: 3,
                           child: Text(
+                            'Duration',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            ' /day',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+
+                        Expanded(
+                          flex: 4,
+                          child: Text(
                             'Timing',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
-
-                    // Table content
                     ...medicines.map((medicine) {
+                      // Split the string into parts based on commas
+                      final parts = medicine.split(',');
+                      final name = parts.isNotEmpty ? parts[0] : '';
+                      final duration = parts.length > 1 ? parts[1] : '';
+                      final perday = parts.length > 2 ? parts[2] : '';
+                      final timings = parts.length > 3 ? parts[3] : '';
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),
                         child: Row(
                           children: [
-                            Expanded(
-                              flex: 3,
-                              child: Text(medicine['name'] ?? ''),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(medicine['dosage'] ?? ''),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(medicine['timing'] ?? ''),
-                            ),
+                            Expanded(flex: 3, child: Text(name)),
+                            Expanded(flex: 3, child: Text(duration)),
+                            Expanded(flex: 2, child: Text(perday)),
+                            Expanded(flex: 4, child: Text(timings)),
                           ],
                         ),
                       );
-                    }),
-
+                    }).toList(),
                     const Divider(height: 30, thickness: 1),
-
-                    // Notes Section
                     const Text(
                       'Notes:',
                       style: TextStyle(
@@ -810,7 +677,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      notes,
+                      notes.isNotEmpty ? notes : 'No additional notes.',
                       style: const TextStyle(fontSize: 16, height: 1.5),
                     ),
                   ],
@@ -818,8 +685,6 @@ class DiagnosisDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 30),
-
-            // Done Button
             Center(
               child: ElevatedButton.icon(
                 onPressed: () => Navigator.pop(context),
@@ -848,7 +713,6 @@ class DiagnosisDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Helper to create formatted prescription string for copying
   String _buildPrescriptionText(Map prescription) {
     final medicines = prescription['medicines'] as List<dynamic>? ?? [];
     final notes = prescription['notes'] ?? '';
@@ -856,13 +720,17 @@ class DiagnosisDetailScreen extends StatelessWidget {
     final buffer = StringBuffer();
     buffer.writeln('Prescription:');
     for (var med in medicines) {
-      buffer.writeln('• ${med['name']} - ${med['dosage']} (${med['timing']})');
+      // Split each medicine into parts
+      final parts = med.split(',');
+      final name = parts.isNotEmpty ? parts[0] : '';
+      final dosage = parts.length > 1 ? parts[1] : '';
+      final timing = parts.length > 2 ? parts[2] : '';
+      buffer.writeln('• $name - $dosage ($timing)');
     }
     buffer.writeln('\nNotes: $notes');
     return buffer.toString();
   }
 
-  // Section Card Wrapper
   Widget _sectionCard({required String title, required List<Widget> children}) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -889,7 +757,6 @@ class DiagnosisDetailScreen extends StatelessWidget {
     );
   }
 
-  // Detail Tile
   Widget _buildDetailTile(String title, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -900,6 +767,84 @@ class DiagnosisDetailScreen extends StatelessWidget {
           Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
         ],
       ),
+    );
+  }
+
+  Future<void> generatePdf(Map<String, dynamic> appointment) async {
+    final pdf = pw.Document();
+    final date = appointment['appointmentDate'] as DateTime;
+    final List<dynamic> medicines =
+        (appointment['prescription'] is List)
+            ? appointment['prescription']
+            : [];
+    final String notes =
+        (appointment['prescription'] is Map)
+            ? appointment['prescription']['notes'] ?? ''
+            : '';
+    final formattedDate = '${date.day}/${date.month}/${date.year}';
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Diagnosis Report',
+                style: pw.TextStyle(
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Text('Doctor: ${appointment['doctorName'] ?? 'N/A'}'),
+              pw.Text(
+                'Specialization: ${appointment['specialization'] ?? 'N/A'}',
+              ),
+              pw.Text('Clinic: ${appointment['clinicName'] ?? 'N/A'}'),
+              pw.Text('Date: $formattedDate'),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Diagnosis:',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text(appointment['diagnosis'] ?? 'Not Provided'),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Prescription:',
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              if (medicines.isNotEmpty)
+                ...medicines.map<pw.Widget>((med) {
+                  final parts = med.split(',');
+                  final name = parts.isNotEmpty ? parts[0] : '';
+                  final duration = parts.length > 1 ? parts[1] : '';
+                  final perday = parts.length > 2 ? parts[2] : '';
+                  final timing = parts.length > 3 ? parts[3] : '';
+                  return pw.Bullet(
+                    text:
+                        '$name - Duration: $duration, /day: $perday, Timing: $timing',
+                  );
+                }).toList()
+              else
+                pw.Text('No medicines prescribed.'),
+              if (notes.isNotEmpty) ...[
+                pw.SizedBox(height: 12),
+                pw.Text(
+                  'Doctor\'s Notes:',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
+                pw.Text(notes),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
     );
   }
 }

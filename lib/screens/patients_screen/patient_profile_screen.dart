@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Assuming you have these colors defined in your theme
 const Color mainColor = Color(0xFF0A73B7);
@@ -51,6 +52,27 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
     _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
+    _fetchUserName();
+  }
+
+  Future<void> _fetchUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('patients')
+              .doc(user.uid)
+              .get();
+      if (doc.exists) {
+        setState(() {
+          userProfile['name'] = doc.data()?['name'] ?? 'No Name';
+        });
+      } else {
+        setState(() {
+          userProfile['name'] = 'Unknown';
+        });
+      }
+    }
   }
 
   @override
@@ -115,23 +137,24 @@ class _ProfileScreenState extends State<ProfileScreen>
 
                 const SizedBox(height: 12),
                 Text(
-                  userProfile['name'],
+                  userProfile['name'] ?? 'Loading...',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.phone, size: 14, color: subColor),
-                    SizedBox(width: 3),
-                    Text(
-                      userProfile['phone'],
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  ],
-                ),
+
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: [
+                //     Icon(Icons.phone, size: 14, color: subColor),
+                //     SizedBox(width: 3),
+                //     Text(
+                //       userProfile['phone'],
+                //       style: const TextStyle(color: Colors.grey, fontSize: 14),
+                //     ),
+                //   ],
+                // ),
               ],
             ).animate().fadeIn(duration: 600.ms),
 
@@ -143,14 +166,20 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: 'Complete / Update Profile',
               subtitle: 'Add or modify contact & personal info',
               onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder:
-                        (context) =>
-                            UpdatePersonalInfoScreen(userData: userProfile),
-                  ),
-                );
+                final user = FirebaseAuth.instance.currentUser;
+
+                if (user != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              UpdatePersonalInfoScreen(patientId: user.uid),
+                    ),
+                  );
+                }
               },
+
               color: subColor,
             ),
 
@@ -171,26 +200,25 @@ class _ProfileScreenState extends State<ProfileScreen>
               color: mainColor,
             ),
 
-            _profileTile(
-              icon: FontAwesomeIcons.notesMedical,
-              title: 'Medical Records',
-              subtitle: 'Prescriptions, visits, and reports',
-              onTap: () {
-                // Navigate to Medical Records Screen
-              },
-              color: subColor,
-            ),
+            // _profileTile(
+            //   icon: FontAwesomeIcons.notesMedical,
+            //   title: 'Medical Records',
+            //   subtitle: 'Prescriptions, visits, and reports',
+            //   onTap: () {
+            //     // Navigate to Medical Records Screen
+            //   },
+            //   color: subColor,
+            // ),
 
-            _profileTile(
-              icon: FontAwesomeIcons.gear,
-              title: 'Settings',
-              subtitle: 'Theme, notifications, preferences',
-              onTap: () {
-                // Navigate to Settings Screen
-              },
-              color: mainColor,
-            ),
-
+            // _profileTile(
+            //   icon: FontAwesomeIcons.gear,
+            //   title: 'Settings',
+            //   subtitle: 'Theme, notifications, preferences',
+            //   onTap: () {
+            //     // Navigate to Settings Screen
+            //   },
+            //   color: mainColor,
+            // ),
             _profileTile(
               icon: FontAwesomeIcons.rightFromBracket,
               title: 'Log Out',

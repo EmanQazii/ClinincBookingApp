@@ -27,7 +27,10 @@ class PatientService {
 
       if (querySnapshot.docs.isNotEmpty) {
         final doc = querySnapshot.docs.first;
-        return PatientModel.fromJson(doc.data() as Map<String, dynamic>);
+        return PatientModel.fromJson(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }
       return null;
     } catch (e) {
@@ -45,7 +48,10 @@ class PatientService {
 
       if (doc.exists) {
         print("Document data: ${doc.data()}");
-        return PatientModel.fromJson(doc.data() as Map<String, dynamic>);
+        return PatientModel.fromJson(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       } else {
         print("Document does not exist");
       }

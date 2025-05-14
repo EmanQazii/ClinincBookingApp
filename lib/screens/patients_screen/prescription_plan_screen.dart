@@ -589,18 +589,18 @@ class ToggleButtonsRow extends StatelessWidget {
                           horizontal: 6,
                           vertical: 2,
                         ),
-                        decoration: BoxDecoration(
-                          color: mainColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$newPrescriptionCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // decoration: BoxDecoration(
+                        //   color: mainColor,
+                        //   borderRadius: BorderRadius.circular(12),
+                        // ),
+                        // child: Text(
+                        //   '$newPrescriptionCount',
+                        //   style: const TextStyle(
+                        //     color: Colors.white,
+                        //     fontSize: 10,
+                        //     fontWeight: FontWeight.bold,
+                        //   ),
+                        // ),
                       ),
                     ),
                   Text(

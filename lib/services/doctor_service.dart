@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/doctor_model.dart';
+import '../models/appointment_model.dart';
+import 'package:intl/intl.dart';
 
 class DoctorService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -81,6 +83,73 @@ class DoctorService {
 
     // If no doctor matches the credentials, return null
     return null;
+  }
+
+  Future<List<Doctor>> getRecommendedDoctors({double minRating = 4.0}) async {
+    final querySnapshot =
+        await _firestore
+            .collectionGroup(
+              'doctors',
+            ) // This scans all clinics/{clinicId}/doctors
+            .where('averageRating', isGreaterThanOrEqualTo: minRating)
+            .orderBy('averageRating', descending: true)
+            .limit(10)
+            .get();
+
+    final doctors =
+        querySnapshot.docs.map((doc) => Doctor.fromFirestore(doc)).toList();
+
+    print("Fetched ${doctors.length} doctors:");
+    for (var d in doctors) {
+      print("${d.name} - ${d.averageRating}");
+    }
+
+    return doctors;
+  }
+
+  Future<List<AppointmentModel>> getUpcomingAppointmentsForDoctor({
+    required String clinicId,
+    required String doctorId,
+  }) async {
+    final snapshot =
+        await _firestore
+            .collection('clinics')
+            .doc(clinicId)
+            .collection('doctors')
+            .doc(doctorId)
+            .collection('appointments')
+            .where('status', isEqualTo: 'Pending')
+            .orderBy('bookedAt') // Still okay for sorting
+            .get();
+
+    final now = DateTime.now();
+
+    final filteredAppointments =
+        snapshot.docs
+            .where((doc) {
+              final appointmentDateStr = doc['appointmentDate'] as String;
+              final appointmentTimeStr = doc['appointmentTime'] as String;
+
+              try {
+                // Extract start time from "3:00 pm - 4:00 pm"
+                final startTimePart =
+                    appointmentTimeStr.split('-').first.trim();
+
+                // Combine into "YYYY-MM-DD h:mm a" format
+                final dateTimeStr =
+                    '$appointmentDateStr $startTimePart'.toUpperCase();
+                final formatter = DateFormat('yyyy-MM-dd h:mm a');
+                final appointmentDateTime = formatter.parse(dateTimeStr);
+
+                return appointmentDateTime.isAfter(now);
+              } catch (e) {
+                return false; // Skip if date/time is invalid
+              }
+            })
+            .map((doc) => AppointmentModel.fromMap(doc.data()))
+            .toList();
+
+    return filteredAppointments;
   }
 }
 

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const mainColor = Color(0xFF0A73B7);
 const subColor = Color(0xFF00BFA6);
 
 class UpdatePersonalInfoScreen extends StatefulWidget {
-  final Map<String, dynamic> userData;
+  final String patientId;
 
-  const UpdatePersonalInfoScreen({super.key, required this.userData});
+  const UpdatePersonalInfoScreen({super.key, required this.patientId});
 
   @override
   State<UpdatePersonalInfoScreen> createState() =>
@@ -20,7 +22,6 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
   late TextEditingController ageController;
   late TextEditingController genderController;
 
-  // Control which fields are editable
   Map<String, bool> isEditing = {
     'name': false,
     'phone': false,
@@ -29,16 +30,42 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
     'gender': false,
   };
 
+  bool isLoading = true;
+  String patientId = '';
+  Map<String, dynamic>? userData;
+
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController(text: widget.userData['name']);
-    phoneController = TextEditingController(text: widget.userData['phone']);
-    emailController = TextEditingController(text: widget.userData['email']);
-    ageController = TextEditingController(
-      text: widget.userData['age'].toString(),
-    );
-    genderController = TextEditingController(text: widget.userData['gender']);
+    patientId = widget.patientId;
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    try {
+      DocumentSnapshot snapshot =
+          await FirebaseFirestore.instance
+              .collection('patients')
+              .doc(patientId)
+              .get();
+
+      if (snapshot.exists) {
+        userData = snapshot.data() as Map<String, dynamic>;
+        nameController = TextEditingController(text: userData?['name']);
+        phoneController = TextEditingController(text: userData?['phone']);
+        emailController = TextEditingController(text: userData?['email']);
+        ageController = TextEditingController(
+          text: userData?['age'].toString(),
+        );
+        genderController = TextEditingController(text: userData?['gender']);
+      }
+
+      setState(() {
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
   }
 
   @override
@@ -51,8 +78,33 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
     super.dispose();
   }
 
+  Future<void> saveChanges() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(patientId)
+          .update({
+            'name': nameController.text,
+            'phone': phoneController.text,
+            'email': emailController.text,
+            'age': ageController.text,
+            'gender': genderController.text,
+          });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully')),
+      );
+    } catch (e) {
+      print('Error updating data: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -80,11 +132,11 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
+                    const Expanded(
                       flex: 3,
                       child: Text(
                         'Patient ID',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -93,41 +145,20 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
                     Expanded(
                       flex: 4,
                       child: Text(
-                        widget.userData['id'].toString(),
+                        patientId,
                         textAlign: TextAlign.right,
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),
-                    // No edit icon since it's readOnly
                   ],
                 ),
               ),
             ),
-            _buildEditableTile(
-              label: 'Name',
-              controller: nameController,
-              fieldKey: 'name',
-            ),
-            _buildEditableTile(
-              label: 'Phone Number',
-              controller: phoneController,
-              fieldKey: 'phone',
-            ),
-            _buildEditableTile(
-              label: 'Email',
-              controller: emailController,
-              fieldKey: 'email',
-            ),
-            _buildEditableTile(
-              label: 'Age',
-              controller: ageController,
-              fieldKey: 'age',
-            ),
-            _buildEditableTile(
-              label: 'Gender',
-              controller: genderController,
-              fieldKey: 'gender',
-            ),
+            _buildEditableTile('Name', nameController, 'name'),
+            _buildEditableTile('Phone Number', phoneController, 'phone'),
+            _buildEditableTile('Email', emailController, 'email'),
+            _buildEditableTile('Age', ageController, 'age'),
+            _buildEditableTile('Gender', genderController, 'gender'),
             const SizedBox(height: 30),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -142,11 +173,9 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
                 ),
                 elevation: 5,
               ),
-              icon: const Icon(Icons.save, color: Colors.white),
+              icon: const Icon(Icons.save),
               label: const Text('Save Changes'),
-              onPressed: () {
-                // Save logic here
-              },
+              onPressed: saveChanges,
             ),
           ],
         ),
@@ -154,11 +183,11 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
     );
   }
 
-  Widget _buildEditableTile({
-    required String label,
-    required TextEditingController controller,
-    required String fieldKey,
-  }) {
+  Widget _buildEditableTile(
+    String label,
+    TextEditingController controller,
+    String fieldKey,
+  ) {
     final isFieldEditing = isEditing[fieldKey] ?? false;
 
     return Card(
@@ -176,7 +205,7 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
         subtitle:
             isFieldEditing
                 ? TextField(
-                  style: TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white),
                   controller: controller,
                   cursorColor: subColor,
                   autofocus: true,
@@ -190,10 +219,12 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
                     focusedBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: subColor, width: 2),
                     ),
-                    border: UnderlineInputBorder(),
                   ),
                 )
-                : Text(controller.text, style: TextStyle(color: Colors.white)),
+                : Text(
+                  controller.text,
+                  style: const TextStyle(color: Colors.white),
+                ),
         trailing: IconButton(
           icon: Icon(
             isFieldEditing ? Icons.check_circle : Icons.edit,

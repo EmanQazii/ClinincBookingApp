@@ -2,12 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF0A73B7), // Your desired color
+        statusBarIconBrightness:
+            Brightness.light, // Light icons on dark background
+      ),
+    );
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(

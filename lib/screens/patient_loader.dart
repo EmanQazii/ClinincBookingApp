@@ -26,7 +26,7 @@ class _PatientLoaderScreenState extends State<PatientLoaderScreen> {
               .get();
 
       if (doc.exists) {
-        final patient = PatientModel.fromJson(doc.data()!);
+        final patient = PatientModel.fromJson(doc.data()!, doc.id);
         Navigator.pushReplacementNamed(
           context,
           '/patient_dashboard',

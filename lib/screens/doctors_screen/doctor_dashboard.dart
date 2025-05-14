@@ -4,6 +4,8 @@ import 'package:clinic_booking_app/screens/doctors_screen/record_screen.dart';
 import 'package:clinic_booking_app/screens/doctors_screen/appointment_record_screen.dart';
 import 'package:clinic_booking_app/screens/doctors_screen/profile_screen.dart';
 import 'package:clinic_booking_app/models/doctor_model.dart'; // adjust the path if needed
+import '/models/appointment_model.dart';
+import 'package:clinic_booking_app/services/doctor_service.dart';
 
 const mainColor = Color(0xFF0A73B7);
 const subColor = Color(0xFF3ABCC0);
@@ -33,7 +35,10 @@ class _DoctorDashboardState extends State<DoctorDashboardScreen> {
       case 0:
         return; // Already on dashboard, do nothing
       case 1:
-        destination = AppointmentScreen();
+        destination = AppointmentScreen(
+          doctor: widget.doctor,
+          clinicId: widget.clinicId,
+        );
         break;
       case 2:
         destination = RecordsScreen();
@@ -66,6 +71,8 @@ class _DoctorDashboardState extends State<DoctorDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final doctor = widget.doctor;
+    final clinicId = widget.clinicId;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -101,7 +108,11 @@ class _DoctorDashboardState extends State<DoctorDashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => AppointmentScreen(),
+                          builder:
+                              (context) => AppointmentScreen(
+                                doctor: widget.doctor,
+                                clinicId: widget.clinicId,
+                              ),
                         ),
                       );
                     },
@@ -114,7 +125,7 @@ class _DoctorDashboardState extends State<DoctorDashboardScreen> {
               SizedBox(height: 12),
               _SectionTitle(title: "Upcoming Appointments"),
               SizedBox(height: 10),
-              _UpcomingAppointments(doctor: doctor),
+              _UpcomingAppointments(doctor: doctor, clinicId: clinicId),
               SizedBox(height: 20),
               _SectionTitle(title: "Doctor Stats"),
               SizedBox(height: 12),
@@ -382,47 +393,84 @@ class TodayAppointments extends StatelessWidget {
 }
 
 class _UpcomingAppointments extends StatelessWidget {
+  final String clinicId;
   final Doctor doctor;
-  _UpcomingAppointments({required this.doctor});
+  _UpcomingAppointments({required this.doctor, required this.clinicId});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: const Icon(Icons.schedule, color: mainColor),
-        title: const Text(
-          "Sophia Davis",
-          style: TextStyle(color: Colors.black),
-        ),
-        subtitle: const Text(
-          "12:00 PM - 01:00 PM Consultation",
-          style: TextStyle(color: Colors.grey),
-        ),
-        trailing: ElevatedButton.icon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AppointmentSessionScreen(),
+    return FutureBuilder<List<AppointmentModel>>(
+      future: DoctorService().getUpcomingAppointmentsForDoctor(
+        clinicId: clinicId,
+        doctorId: doctor.id!,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final appointments = snapshot.data ?? [];
+
+        if (appointments.isEmpty) {
+          return const Center(child: Text('No upcoming appointments'));
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: appointments.length,
+          itemBuilder: (context, index) {
+            final appointment = appointments[index];
+            return Card(
+              color: Colors.white,
+              elevation: 2,
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.schedule, color: mainColor),
+                title: Text(
+                  appointment.patientName,
+                  style: const TextStyle(color: Colors.black),
+                ),
+                subtitle: Text(
+                  "${appointment.appointmentTime} - ${appointment.specialization}",
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                trailing: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => AppointmentSessionScreen(
+                              doctor: doctor,
+                              appointment: appointment,
+                            ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.play_arrow, color: Colors.white),
+                  label: const Text("Start"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: mainColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
               ),
             );
           },
-          icon: const Icon(Icons.play_arrow, color: Colors.white),
-          label: const Text("Start"),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: mainColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 0,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -591,10 +639,11 @@ class _NewsCard extends StatelessWidget {
   }
 }
 
-Route _createRouteToAppointmentScreen() {
+Route _createRouteToAppointmentScreen(Doctor doctor, String clinicId) {
   return PageRouteBuilder(
     pageBuilder:
-        (context, animation, secondaryAnimation) => const AppointmentScreen(),
+        (context, animation, secondaryAnimation) =>
+            AppointmentScreen(doctor: doctor, clinicId: clinicId),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       const begin = Offset(1.0, 0.0); // Slide from right
       const end = Offset.zero;

@@ -17,8 +17,9 @@ class AppointmentModel {
   final String? symptoms;
   final List<String>? labTestsRequested;
   final String? diagnosis;
-  final String? prescription;
+  final List<String>? prescription;
   final bool reviewed;
+  final String notes;
 
   AppointmentModel({
     required this.appointmentId,
@@ -39,6 +40,7 @@ class AppointmentModel {
     this.diagnosis,
     this.prescription,
     this.reviewed = false,
+    required this.notes,
   });
 
   Map<String, dynamic> toMap() {
@@ -61,6 +63,7 @@ class AppointmentModel {
       'diagnosis': diagnosis,
       'prescription': prescription,
       'reviewed': reviewed,
+      'notes': notes,
     };
   }
 
@@ -82,8 +85,9 @@ class AppointmentModel {
       symptoms: map['symptoms'],
       labTestsRequested: List<String>.from(map['labTestsRequested'] ?? []),
       diagnosis: map['diagnosis'],
-      prescription: map['prescription'],
+      prescription: List<String>.from(map['prescription'] ?? []),
       reviewed: map['reviewed'] ?? false,
+      notes: map['notes'] ?? '',
     );
   }
   AppointmentModel copyWith({
@@ -103,8 +107,9 @@ class AppointmentModel {
     String? symptoms,
     List<String>? labTestsRequested,
     String? diagnosis,
-    String? prescription,
+    List<String>? prescription,
     bool? reviewed,
+    String? notes,
   }) {
     return AppointmentModel(
       appointmentId: appointmentId ?? this.appointmentId,
@@ -125,6 +130,7 @@ class AppointmentModel {
       diagnosis: diagnosis ?? this.diagnosis,
       prescription: prescription ?? this.prescription,
       reviewed: reviewed ?? this.reviewed,
+      notes: notes ?? this.notes,
     );
   }
 }

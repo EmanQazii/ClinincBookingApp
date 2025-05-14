@@ -239,10 +239,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       },
       onAutoVerified: (user) async {
         final patient = PatientModel(
+          pId: user.uid,
           name: name,
           email: dummyEmail, // Initially empty unless you collect it
           phone: fullPhone,
           gender: '', // Optionally collect this later
+          age: '',
+          weight: '',
           dob: null, // Collect later or update
           createdAt: Timestamp.now(),
           lastLogin: Timestamp.now(),

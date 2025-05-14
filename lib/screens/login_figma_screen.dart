@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailOrPhoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
   bool rememberMe = true;
   final Color mainColor = const Color(0xFF0A73B7);
   final Color subColor = const Color(0xFF00BFA6);
@@ -28,6 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin(String role) async {
+    setState(() => _isLoading = true); // Start loading
     String? input = _emailOrPhoneController.text.trim();
     if (input.startsWith('0') && input.length == 11) {
       input = '+92${input.substring(1)}';
@@ -36,65 +38,65 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (input.isEmpty || password.isEmpty) {
       _showMessage("Please enter both fields");
+      setState(() => _isLoading = false); // Stop loading
       return;
     }
 
     late String email;
-
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-
     if (emailRegex.hasMatch(input)) {
       email = input;
     } else {
       final cleanedPhone = input.replaceAll(RegExp(r'[^\d]'), '');
       email = '$cleanedPhone@cureconnect.com';
     }
+
     try {
       if (role == 'patient') {
         final user = await AuthService().signInWithEmailAndPassword(
           email,
           password,
         );
-
         if (user == null) {
           _showMessage("No user found for this credential");
+          setState(() => _isLoading = false);
           return;
         }
 
         final patient = await PatientService().getPatientByEmail(email);
-
         if (patient == null) {
           _showMessage("No patient data found");
+          setState(() => _isLoading = false);
           return;
         }
 
         Navigator.pushNamed(context, '/patient_dashboard', arguments: patient);
       } else if (role == 'doctor') {
-        // For doctors, use DoctorService to fetch and validate credentials
         final result = await DoctorService().getDoctorByCredentials(
           email,
           password,
         );
         if (result != null) {
-          final Doctor doctor = result.doctor;
-          final String clinicId = result.clinicId;
-
-          // Proceed with login — you now have both
           Navigator.push(
             context,
             MaterialPageRoute(
               builder:
-                  (_) =>
-                      DoctorDashboardScreen(doctor: doctor, clinicId: clinicId),
+                  (_) => DoctorDashboardScreen(
+                    doctor: result.doctor,
+                    clinicId: result.clinicId,
+                  ),
             ),
           );
         } else {
-          // Show error
-          print('Invalid credentials');
+          _showMessage('Invalid credentials');
         }
       }
     } catch (e) {
       _showMessage("Login failed: ${e.toString()}");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false); // Stop loading
+      }
     }
   }
 
@@ -321,13 +323,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         backgroundColor: subColor,
                       ),
-                      child: const Text(
-                        "SIGN IN",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child:
+                          _isLoading
+                              ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                              : const Text(
+                                "SIGN IN",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                     ),
                   ),
                   const SizedBox(height: 25),

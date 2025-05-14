@@ -1,32 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:clinic_booking_app/screens/doctors_screen/appointment_detail_screen.dart';
+import '/models/appointment_model.dart';
+import '/services/appointment_service.dart';
+import '/models/doctor_model.dart';
 
 const mainColor = Color(0xFF0A73B7);
 const subColor = Color(0xFF3ABCC0);
 
-class Appointment {
-  final String time;
-  final String name;
-  final String issue;
-  final String type;
-  final String status;
-  final DateTime date;
-  final String gender;
-
-  Appointment({
-    required this.time,
-    required this.name,
-    required this.issue,
-    required this.type,
-    required this.status,
-    required this.date,
-    required this.gender,
-  });
-}
-
 class AppointmentScreen extends StatefulWidget {
-  const AppointmentScreen({super.key});
+  final String clinicId;
+  final Doctor doctor;
+
+  const AppointmentScreen({
+    super.key,
+    required this.doctor,
+    required this.clinicId,
+  });
 
   @override
   State<AppointmentScreen> createState() => _AppointmentScreenState();
@@ -35,64 +25,19 @@ class AppointmentScreen extends StatefulWidget {
 class _AppointmentScreenState extends State<AppointmentScreen> {
   DateTime selectedDate = DateTime.now();
   List<DateTime> weekDates = [];
-
-  List<Appointment> allAppointments = [
-    Appointment(
-      time: '09:00 AM - 10:00 AM',
-      name: 'Ayesha Khan',
-      issue: 'Hypertension',
-      type: 'Cardiology Consultation',
-      status: 'Completed',
-      date: DateTime.now(),
-      gender: 'Female',
-    ),
-    Appointment(
-      time: '10:30 AM - 11:30 AM',
-      name: 'Hamza Ahmed',
-      issue: 'Chest Pain',
-      type: 'Follow-up',
-      status: 'Completed',
-      date: DateTime.now(),
-      gender: 'Male',
-    ),
-    Appointment(
-      time: '12:00 PM - 01:00 PM',
-      name: 'Fatima Noor',
-      issue: 'Irregular Heartbeat',
-      type: 'Cardiology Consultation',
-      status: 'Ongoing',
-      date: DateTime.now(),
-      gender: 'Female',
-    ),
-    Appointment(
-      time: '01:30 PM - 02:30 PM',
-      name: 'Ali Raza',
-      issue: 'Congenital Heart Defect',
-      type: 'Pediatric Cardiology',
-      status: 'Pending',
-      date: DateTime.now().add(Duration(days: 1)),
-      gender: 'Male',
-    ),
-    Appointment(
-      time: '03:00 PM - 04:00 PM',
-      name: 'Zara Sheikh',
-      issue: 'Arrhythmia',
-      type: 'Cardiology Consultation',
-      status: 'Pending',
-      date: DateTime.now().add(Duration(days: 1)),
-      gender: 'Female',
-    ),
-  ];
+  List<AppointmentModel> allAppointments = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _generateWeekDates();
+    fetchAppointments();
   }
 
   void _generateWeekDates() {
     DateTime now = selectedDate;
-    int weekday = now.weekday; // 1 = Monday, 7 = Sunday
+    int weekday = now.weekday;
     DateTime sunday = now.subtract(Duration(days: weekday % 7));
     weekDates = List.generate(7, (index) => sunday.add(Duration(days: index)));
   }
@@ -107,38 +52,52 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     });
   }
 
-  List<Appointment> get filteredAppointments {
-    return allAppointments
-        .where(
-          (appointment) =>
-              appointment.date.year == selectedDate.year &&
-              appointment.date.month == selectedDate.month &&
-              appointment.date.day == selectedDate.day,
-        )
-        .toList();
+  Future<void> fetchAppointments() async {
+    setState(() => isLoading = true);
+    final appointmentService = AppointmentService();
+
+    final fetchedAppointments =
+        await AppointmentService.fetchAllAppointmentsByClinicAndDoctor(
+          clinicId: widget.clinicId,
+          doctorId: widget.doctor.id,
+        );
+
+    setState(() {
+      allAppointments = fetchedAppointments;
+      isLoading = false;
+    });
+  }
+
+  List<AppointmentModel> get filteredAppointments {
+    return allAppointments.where((appointment) {
+      final date = DateTime.parse(appointment.appointmentDate);
+      return date.year == selectedDate.year &&
+          date.month == selectedDate.month &&
+          date.day == selectedDate.day;
+    }).toList();
   }
 
   Color getStatusColor(String status) {
-    switch (status) {
-      case 'Completed':
+    switch (status.toLowerCase()) {
+      case 'completed':
         return Colors.blue.shade700;
-      case 'Ongoing':
+      case 'ongoing':
         return subColor;
-      case 'Pending':
+      case 'pending':
         return Colors.red.shade300;
       default:
         return Colors.grey;
     }
   }
 
-  Widget buildAppointmentCard(Appointment appointment) {
+  Widget buildAppointmentCard(AppointmentModel appointment) {
     return GestureDetector(
       onTap: () {
-        if (appointment.status == 'Pending') {
+        if (appointment.status.toLowerCase() == 'pending') {
           showDialog(
             context: context,
             builder:
-                (context) => AlertDialog(
+                (_) => AlertDialog(
                   title: Text("Session Not Available"),
                   content: Text("This session is not held yet."),
                   actions: [
@@ -153,9 +112,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder:
-                  (context) =>
-                      AppointmentDetailScreen(appointment: appointment),
+              builder: (_) => AppointmentDetailScreen(appointment: appointment),
             ),
           );
         }
@@ -179,7 +136,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      appointment.time,
+                      "${appointment.appointmentTime}",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -188,14 +145,14 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      appointment.name,
+                      appointment.patientName ?? 'Unknown',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
                     ),
                     Text(
-                      appointment.issue,
+                      appointment.symptoms ?? '',
                       style: TextStyle(color: Colors.grey[700]),
                     ),
                   ],
@@ -205,7 +162,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    appointment.type,
+                    appointment.specialization ?? '',
                     style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                   SizedBox(height: 6),
@@ -246,7 +203,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Today's Appointments",
+              "Appointments",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -254,11 +211,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
               ),
             ),
             SizedBox(height: 12),
-            // //SizedBox(height: 4),
-            // Text(
-            //   DateFormat.yMMMMd().format(selectedDate),
-            //   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-            // ),
             Row(
               children: [
                 IconButton(
@@ -281,14 +233,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                               day.day == selectedDate.day &&
                               day.month == selectedDate.month &&
                               day.year == selectedDate.year;
-
                           return Flexible(
                             child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  selectedDate = day;
-                                });
-                              },
+                              onTap: () => setState(() => selectedDate = day),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 4,
@@ -305,7 +252,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                                             BoxShadow(
                                               color: Colors.black26,
                                               blurRadius: 4,
-                                              offset: Offset(0, 2),
                                             ),
                                           ]
                                           : [],
@@ -402,7 +348,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         ),
         body: Column(
           children: [
-            buildDateSelector(), // your calendar widget inside a Card
+            buildDateSelector(),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
@@ -410,26 +356,17 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
               ),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Text(
-                    //   "Today's Appointments",
-                    //   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    // ),
-                    SizedBox(height: 4),
-                    Text(
-                      DateFormat.yMMMMd().format(selectedDate),
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
-                  ],
+                child: Text(
+                  DateFormat.yMMMMd().format(selectedDate),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ),
             ),
             Expanded(
               child:
-                  filteredAppointments.isEmpty
+                  isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : filteredAppointments.isEmpty
                       ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(24.0),

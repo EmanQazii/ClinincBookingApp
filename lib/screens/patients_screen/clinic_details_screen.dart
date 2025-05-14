@@ -221,7 +221,7 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
                 image:
                     doctor.imageUrl.isNotEmpty
                         ? DecorationImage(
-                          image: NetworkImage(doctor.imageUrl),
+                          image: AssetImage('assets/images/doctor.jpg'),
                           fit: BoxFit.cover,
                         )
                         : DecorationImage(
@@ -237,15 +237,12 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
             ),
             const SizedBox(height: 4),
 
-            // Doctor Name
             Text(
               doctor.name,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 2),
-
-            // Specialization
             Text(
               doctor.specialization,
               style: const TextStyle(fontSize: 12, color: Colors.grey),

@@ -54,16 +54,15 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   Future<void> _fetchPatientDetails() async {
     try {
       // Get the currently logged-in user's UID
-      final user = FirebaseAuth.instance.currentUser;
-      final uid = '5yrxRXiijpaq16AYDshJsEKO5Zj1';
-      if (uid != null) {
-        // Fetch the patient's document from Firestore using the UID
-        final patientData = await PatientService().getPatientById(uid);
+      final user = FirebaseAuth.instance.currentUser!;
+      if (user.uid != null) {
+        print("user id nowwwww${user.uid}");
+        final patientData = await PatientService().getPatientById(user.uid);
 
         if (patientData != null) {
           setState(() {
             patient = patientData;
-            patientId = uid; // Using user UID as the patientId
+            patientId = user.uid; // Using user UID as the patientId
           });
           print('Patient Data: ${patientData.name}'); // ✅ safe now
         }
@@ -101,41 +100,57 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   void _confirmAppointment() async {
     if (selectedSlot.isEmpty) {
       _showDialog('Please select a time slot!');
-    } else {
-      if (patient != null) {
-        String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+      return;
+    }
 
-        // Generate unique appointment ID
-        final docRef =
-            FirebaseFirestore.instance.collection('appointments').doc();
-        String appointmentId = docRef.id;
-        AppointmentModel appointment = AppointmentModel(
-          appointmentId: appointmentId,
-          doctorId: widget.doctor.id,
-          doctorName: widget.doctor.name,
-          specialization: widget.doctor.specialization,
-          clinicId: widget.clinic.id,
-          clinicName: widget.clinic.name,
-          appointmentDate: formattedDate,
-          appointmentTime: selectedSlot,
-          patientId: patientId, // Use patientId
-          patientName: patient!.name, // Use patient's name
-          patientPhone: patient!.phone, // Use patient's phone
-          symptoms: "Fever", // Replace with actual data
-          labTestsRequested: ["Blood Tets"], // Replace with actual data
-          diagnosis: "Flu", // Replace with actual data
-          prescription: "Paracetamol", // Replace with actual data
-          status: 'Pending',
-          bookedAt: Timestamp.now(), // Replace with actual status logic
-        );
+    if (patient == null) {
+      _showDialog('Error: Unable to fetch patient data.');
+      return;
+    }
 
-        // Call the AppointmentService to book the appointment
-        await AppointmentService.bookAppointment(appointment);
+    setState(() => _isConfirmTapped = true);
 
-        // Show success dialog
+    try {
+      String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+
+      final docRef =
+          FirebaseFirestore.instance.collection('appointments').doc();
+      String appointmentId = docRef.id;
+
+      AppointmentModel appointment = AppointmentModel(
+        appointmentId: appointmentId,
+        doctorId: widget.doctor.id,
+        doctorName: widget.doctor.name,
+        specialization: widget.doctor.specialization,
+        clinicId: widget.clinic.id,
+        clinicName: widget.clinic.name,
+        appointmentDate: formattedDate,
+        appointmentTime: selectedSlot,
+        patientId: patientId,
+        patientName: patient!.name,
+        patientPhone: patient!.phone,
+        symptoms: "Fever",
+        labTestsRequested: ["Blood Test"],
+        diagnosis: "Flu",
+        prescription: ["Paracetamol"],
+        status: 'Pending',
+        bookedAt: Timestamp.now(),
+        notes: '',
+      );
+
+      await AppointmentService.bookAppointment(appointment);
+
+      if (mounted) {
         _showDialog('Your Appointment is Confirmed!');
-      } else {
-        _showDialog('Error: Unable to fetch patient data.');
+        Future.delayed(Duration(seconds: 2), () {
+          Navigator.pop(context); // Go back to the previous screen
+        });
+      }
+    } catch (e) {
+      _showDialog('Error confirming appointment. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isConfirmTapped = false);
       }
     }
   }
@@ -409,7 +424,17 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: Text('Confirm Appointment'),
+                child:
+                    _isConfirmTapped
+                        ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : Text('Confirm Appointment'),
               ),
             ),
           ),

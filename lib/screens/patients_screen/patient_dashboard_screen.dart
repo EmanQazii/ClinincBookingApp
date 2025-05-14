@@ -1,10 +1,13 @@
 import 'package:clinic_booking_app/screens/patients_screen/appointments_history_screen.dart';
 import 'package:clinic_booking_app/screens/patients_screen/patient_profile_screen.dart';
+import 'package:clinic_booking_app/screens/patients_screen/book_appointment_screen.dart';
 import 'package:clinic_booking_app/screens/patients_screen/prescription_plan_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:clinic_booking_app/models/patient_model.dart';
 import 'package:clinic_booking_app/models/clinic_model.dart';
+import 'package:clinic_booking_app/models/doctor_model.dart';
 import 'package:clinic_booking_app/services/clinic_service.dart';
+import 'package:clinic_booking_app/services/doctor_service.dart';
 
 class PatientDashboard extends StatefulWidget {
   final PatientModel patient;
@@ -21,11 +24,38 @@ class _PatientDashboardState extends State<PatientDashboard> {
   Color subColor = const Color(0xFF3ABCC0);
   List<Clinic> _clinics = [];
   bool _isLoading = true;
+  Clinic? clinic;
+  List<Doctor> _recommendedDoctors = [];
+  TextEditingController _searchController = TextEditingController();
+  List<Clinic> _filteredClinics = [];
+  List<Doctor> _filteredDoctors = [];
 
   @override
   void initState() {
     super.initState();
     _fetchClinics();
+    _fetchRecommendedDoctors();
+    fetchSingleClinic();
+  }
+
+  Future<void> fetchSingleClinic() async {
+    String clinicId = '1S5VQe5fXHJf7sMDsOuQ';
+    ClinicService clinicService = ClinicService();
+    Clinic? fetchedClinic = await clinicService.getClinicById(clinicId);
+
+    setState(() {
+      clinic =
+          fetchedClinic; // Assign the fetched clinic to the class-level variable
+    });
+  }
+
+  void _fetchRecommendedDoctors() async {
+    final doctorService = DoctorService();
+    final doctors = await doctorService.getRecommendedDoctors();
+    setState(() {
+      _recommendedDoctors = doctors;
+      _filteredDoctors = doctors;
+    });
   }
 
   void _fetchClinics() async {
@@ -33,7 +63,36 @@ class _PatientDashboardState extends State<PatientDashboard> {
     final clinics = await service.getClinics();
     setState(() {
       _clinics = clinics;
+      _filteredClinics = clinics;
       _isLoading = false;
+    });
+  }
+
+  void _filterSearchResults(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _filteredClinics = _clinics;
+        _filteredDoctors = _recommendedDoctors;
+      });
+      return;
+    }
+
+    final lowercaseQuery = query.toLowerCase();
+
+    setState(() {
+      _filteredClinics =
+          _clinics
+              .where(
+                (clinic) => clinic.name.toLowerCase().contains(lowercaseQuery),
+              )
+              .toList();
+
+      _filteredDoctors =
+          _recommendedDoctors
+              .where(
+                (doctor) => doctor.name.toLowerCase().contains(lowercaseQuery),
+              )
+              .toList();
     });
   }
 
@@ -189,9 +248,11 @@ class _PatientDashboardState extends State<PatientDashboard> {
       ),
       child: Row(
         children: [
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
+              controller: _searchController,
+              onChanged: _filterSearchResults,
               decoration: InputDecoration(
                 hintText: "Search nearby clinics, doctors...",
                 hintStyle: TextStyle(color: Colors.grey.shade600),
@@ -200,11 +261,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
             ),
           ),
           IconButton(
-            icon: Icon(
-              Icons.search,
-              color: Color(0xFF3ABCC0),
-            ), // Modern, brighter search icon
-            onPressed: () {},
+            icon: const Icon(Icons.search, color: Color(0xFF3ABCC0)),
+            onPressed: () {
+              _filterSearchResults(
+                _searchController.text,
+              ); // Optional: trigger search manually
+            },
           ),
         ],
       ),
@@ -223,7 +285,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final items = isDoctor ? List.filled(5, null) : _clinics;
+    final items = isDoctor ? _recommendedDoctors : _clinics;
     return SizedBox(
       height: isDoctor ? 230 : 210, // Different height based on type
       child: ListView.builder(
@@ -231,7 +293,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
         itemCount: items.length,
         itemBuilder: (context, index) {
           return isDoctor
-              ? _buildDoctorCard(context)
+              ? _buildDoctorCard(context, _recommendedDoctors[index], clinic!)
               : _buildClinicCard(context, clinic: _clinics[index]);
         },
       ),
@@ -323,7 +385,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
     );
   }
 
-  Widget _buildDoctorCard(BuildContext context) {
+  Widget _buildDoctorCard(BuildContext context, Doctor doctor, Clinic clinic) {
     return Container(
       width: 160,
       margin: const EdgeInsets.only(right: 12),
@@ -349,8 +411,13 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 top: Radius.circular(16),
               ),
               image: DecorationImage(
-                image: AssetImage('assets/images/doctor.png'),
+                image: AssetImage(
+                  'assets/images/doctor.png',
+                ), // Use AssetImage for local image
                 fit: BoxFit.cover,
+                onError: (error, stackTrace) {
+                  // fallback image
+                },
               ),
             ),
           ),
@@ -358,31 +425,47 @@ class _PatientDashboardState extends State<PatientDashboard> {
             padding: const EdgeInsets.all(8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  "Doctor Name",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  doctor.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  "Specialization",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  doctor.specialization,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-                SizedBox(height: 4),
-                Icon(Icons.location_on, size: 18, color: Color(0xFF2C7DA0)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 16, color: Colors.amber),
+                    const SizedBox(width: 4),
+                    Text(doctor.averageRating.toStringAsFixed(1)),
+                    const Spacer(),
+                    const Icon(
+                      Icons.location_on,
+                      size: 16,
+                      color: Color(0xFF2C7DA0),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
-            child: _buildAnimatedBookButton(context),
+            child: _buildAnimatedBookButton(context, doctor, clinic),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAnimatedBookButton(BuildContext context) {
+  Widget _buildAnimatedBookButton(
+    BuildContext context,
+    Doctor doctor,
+    Clinic clinic,
+  ) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return GestureDetector(
@@ -395,7 +478,16 @@ class _PatientDashboardState extends State<PatientDashboard> {
         curve: Curves.easeOutBack,
         child: ElevatedButton(
           onPressed: () {
-            Navigator.pushNamed(context, '/book_appointment');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => BookAppointmentScreen(
+                      doctor: doctor, // Pass the doctor object
+                      clinic: clinic, // Pass the clinic object
+                    ),
+              ),
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: subColor,

@@ -90,10 +90,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
         // Step 3: Create patient model and store in Firestore
         final patient = PatientModel(
+          pId: user.uid,
           name: widget.name,
           email: widget.email,
           phone: widget.phoneNumber,
           gender: '',
+          age: '',
+          weight: '',
           dob: null,
           createdAt: Timestamp.now(),
           lastLogin: Timestamp.now(),
