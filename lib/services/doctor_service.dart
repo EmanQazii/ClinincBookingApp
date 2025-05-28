@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/doctor_model.dart';
 import '../models/appointment_model.dart';
 import 'package:intl/intl.dart';
+import '../models/clinic_model.dart';
 
 class DoctorService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,14 +18,12 @@ class DoctorService {
 
   // Stream all doctors in a clinic
   Stream<List<Doctor>> getDoctorsForClinic(String clinicId) {
-    print("Fetching doctors for clinic: $clinicId");
     return _firestore
         .collection('clinics')
         .doc(clinicId)
         .collection('doctors')
         .snapshots()
         .map((snapshot) {
-          print("Docs fetched: ${snapshot.docs.length}");
           return snapshot.docs.map((doc) => Doctor.fromFirestore(doc)).toList();
         });
   }
@@ -99,12 +98,17 @@ class DoctorService {
     final doctors =
         querySnapshot.docs.map((doc) => Doctor.fromFirestore(doc)).toList();
 
-    print("Fetched ${doctors.length} doctors:");
-    for (var d in doctors) {
-      print("${d.name} - ${d.averageRating}");
-    }
-
     return doctors;
+  }
+
+  Future<List<Doctor>> getDoctorsBySpecialization(String specialization) async {
+    final querySnapshot =
+        await _firestore
+            .collectionGroup('doctors') // Search across all clinics
+            .where('specialization', isEqualTo: specialization)
+            .get();
+
+    return querySnapshot.docs.map((doc) => Doctor.fromFirestore(doc)).toList();
   }
 
   Future<List<AppointmentModel>> getUpcomingAppointmentsForDoctor({
@@ -150,6 +154,27 @@ class DoctorService {
             .toList();
 
     return filteredAppointments;
+  }
+
+  Future<Clinic?> findClinicForDoctor(String doctorId) async {
+    final clinicsSnapshot =
+        await FirebaseFirestore.instance.collection('clinics').get();
+
+    for (var clinicDoc in clinicsSnapshot.docs) {
+      final doctorSnapshot =
+          await FirebaseFirestore.instance
+              .collection('clinics')
+              .doc(clinicDoc.id)
+              .collection('doctors')
+              .doc(doctorId)
+              .get();
+
+      if (doctorSnapshot.exists) {
+        return Clinic.fromFirestore(clinicDoc);
+      }
+    }
+
+    return null; // Clinic not found
   }
 }
 

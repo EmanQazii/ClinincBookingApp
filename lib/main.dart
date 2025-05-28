@@ -1,23 +1,30 @@
 import 'package:clinic_booking_app/screens/home_screen_flutterflow.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'screens/login_figma_screen.dart';
 import 'screens/sign_up_screen.dart';
 import 'screens/patients_screen/patient_dashboard_screen.dart';
 import 'screens/patients_screen/clinic_details_screen.dart';
-import 'screens/patients_screen/book_appointment_screen.dart';
 import 'screens/patients_screen/search_result_screen.dart';
 import 'package:clinic_booking_app/models/patient_model.dart';
 import 'screens/patient_loader.dart';
 import 'package:clinic_booking_app/models/clinic_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'screens/doctors_screen/doctor_dashboard.dart';
 import 'package:clinic_booking_app/models/doctor_model.dart';
+import 'package:clinic_booking_app/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await NotificationService.init(); // Custom service (explained below)
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(MyApp());
+}
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  // Handle background messages here
 }
 
 class MyApp extends StatelessWidget {

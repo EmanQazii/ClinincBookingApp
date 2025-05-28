@@ -143,18 +143,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.center,
-                //   children: [
-                //     Icon(Icons.phone, size: 14, color: subColor),
-                //     SizedBox(width: 3),
-                //     Text(
-                //       userProfile['phone'],
-                //       style: const TextStyle(color: Colors.grey, fontSize: 14),
-                //     ),
-                //   ],
-                // ),
               ],
             ).animate().fadeIn(duration: 600.ms),
 
@@ -199,26 +187,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               },
               color: mainColor,
             ),
-
-            // _profileTile(
-            //   icon: FontAwesomeIcons.notesMedical,
-            //   title: 'Medical Records',
-            //   subtitle: 'Prescriptions, visits, and reports',
-            //   onTap: () {
-            //     // Navigate to Medical Records Screen
-            //   },
-            //   color: subColor,
-            // ),
-
-            // _profileTile(
-            //   icon: FontAwesomeIcons.gear,
-            //   title: 'Settings',
-            //   subtitle: 'Theme, notifications, preferences',
-            //   onTap: () {
-            //     // Navigate to Settings Screen
-            //   },
-            //   color: mainColor,
-            // ),
             _profileTile(
               icon: FontAwesomeIcons.rightFromBracket,
               title: 'Log Out',

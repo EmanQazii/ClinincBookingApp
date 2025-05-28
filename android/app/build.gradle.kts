@@ -1,3 +1,20 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = project.file("key.properties")
+
+if (!keystorePropertiesFile.exists()) {
+    throw GradleException("❌ 'key.properties' file is missing at project root: ${keystorePropertiesFile.path}")
+}
+
+keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
+fun getRequiredProperty(name: String): String {
+    return keystoreProperties[name] as? String
+        ?: throw GradleException("❌ Missing required property '$name' in key.properties")
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -12,15 +29,16 @@ android {
     ndkVersion = "27.0.12077973"
     namespace = "com.example.clinic_booking_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true 
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "1.8"
     }
 
     defaultConfig {
@@ -33,16 +51,32 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
+    
+    signingConfigs {
+        create("release") {
+        keyAlias = getRequiredProperty("keyAlias")
+        keyPassword = getRequiredProperty("keyPassword")
+        storeFile = file(getRequiredProperty("storeFile"))
+        storePassword = getRequiredProperty("storePassword")
+    }
+    }
 
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-        }
+        getByName("release") {
+        signingConfig = signingConfigs.getByName("release") // Use release signing config here
+        isMinifyEnabled = false
+        isShrinkResources = false
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            "proguard-rules.pro"
+        )
+    }
     }
 }
 
 flutter {
     source = "../.."
+}
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

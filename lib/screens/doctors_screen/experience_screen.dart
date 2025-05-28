@@ -15,6 +15,8 @@ class ExperienceScreen extends StatelessWidget {
     "Completed 300+ surgeries",
   ];
 
+  ExperienceScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

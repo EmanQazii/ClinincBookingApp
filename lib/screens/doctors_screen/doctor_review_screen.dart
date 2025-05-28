@@ -8,7 +8,11 @@ class DoctorReviewsScreen extends StatelessWidget {
   final List<Map<String, dynamic>> reviews;
   final double averageRating;
 
-  DoctorReviewsScreen({required this.reviews, required this.averageRating});
+  const DoctorReviewsScreen({
+    super.key,
+    required this.reviews,
+    required this.averageRating,
+  });
 
   @override
   Widget build(BuildContext context) {

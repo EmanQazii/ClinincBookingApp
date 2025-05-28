@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import '/services/prescription_service.dart';
+import '/models/patient_model.dart';
+import 'package:intl/intl.dart';
+import '/models/prescription_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/models/active_plan_model.dart';
+import '/services/notification_service.dart';
 
 class PrescriptionScreen extends StatefulWidget {
-  const PrescriptionScreen({super.key});
+  final PatientModel patient;
+  const PrescriptionScreen({super.key, required this.patient});
 
   @override
   State<PrescriptionScreen> createState() => _PrescriptionScreenState();
@@ -14,6 +22,40 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
 
   Color get mainColor => const Color(0xFF0A73B7);
   Color get subColor => const Color(0xFF3ABCC0);
+  List<Map<String, dynamic>> doctorSentPrescriptions = [];
+  List<ActivePlanModel> activePlans = [];
+  bool isLoadingActivePlans = true;
+  bool isLoading = true;
+  final service = PrescriptionService();
+  @override
+  void initState() {
+    super.initState();
+    fetchDoctorSentPrescriptions();
+    fetchActivePlans();
+  }
+
+  Future<void> fetchDoctorSentPrescriptions() async {
+    final prescriptions = await service.getPrescriptionsForPatient(
+      widget.patient.pId,
+    ); // Replace with actual ID
+    setState(() {
+      doctorSentPrescriptions = prescriptions;
+      isLoading = false;
+    });
+  }
+
+  Future<void> fetchActivePlans() async {
+    setState(() {
+      isLoadingActivePlans = true;
+    });
+
+    final plans = await service.getActivePlansForPatient(widget.patient.pId);
+
+    setState(() {
+      activePlans = plans;
+      isLoadingActivePlans = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,9 +129,11 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   }
 
   Widget _buildActivePlans() {
-    // Replace this with actual data
-    final bool hasActivePlans = true;
-    if (!hasActivePlans) {
+    if (isLoadingActivePlans) {
+      return Center(child: CircularProgressIndicator(color: mainColor));
+    }
+
+    if (activePlans.isEmpty) {
       return Center(
         key: const ValueKey('noActive'),
         child: Padding(
@@ -100,7 +144,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
               Icon(
                 Icons.medical_services_outlined,
                 size: 80,
-                color: mainColor.withOpacity(0.1), // Watermark effect
+                color: mainColor.withOpacity(0.1),
               ),
               const SizedBox(height: 24),
               Text(
@@ -127,28 +171,31 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
     return Column(
       key: const ValueKey('activeList'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildDetailedActiveCard(
-          title: "Diabetes Plan",
-          totalDoses: 10,
-          takenDoses: 4,
-          durationDays: 5,
-          daysPassed: 2,
-          medicines: ["Metformin 500mg", "Glibenclamide 5mg"],
-        ),
-        _buildDetailedActiveCard(
-          title: "Antibiotics",
-          totalDoses: 15,
-          takenDoses: 10,
-          durationDays: 7,
-          daysPassed: 5,
-          medicines: ["Azithromycin 250mg", "Paracetamol 500mg"],
-        ),
-      ],
+      children:
+          activePlans.map((plan) {
+            NotificationService.showNotification(
+              title: 'Medicine Reminder',
+              body: 'Dont forget to take ${plan.medicines} today!.',
+            );
+            return _buildDetailedActiveCard(
+              planId: plan.activePlanId,
+              patientId: plan.patientId,
+              prescriptionId: plan.prescriptionId,
+              title: plan.title,
+              totalDoses: plan.totalDoses,
+              takenDoses: plan.takenDoses,
+              durationDays: plan.durationDays,
+              daysPassed: plan.daysPassed,
+              medicines: plan.medicines,
+            );
+          }).toList(),
     );
   }
 
   Widget _buildDetailedActiveCard({
+    required String planId,
+    required String patientId,
+    required String prescriptionId,
     required String title,
     required int totalDoses,
     required int takenDoses,
@@ -156,28 +203,30 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
     required int daysPassed,
     required List<String> medicines,
   }) {
-    final int daysLeft = durationDays - daysPassed;
+    return StreamBuilder<DocumentSnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('patients')
+              .doc(patientId)
+              .collection('prescriptions')
+              .doc(prescriptionId)
+              .collection('activePlans')
+              .doc(planId)
+              .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(child: CircularProgressIndicator());
+        }
 
-    return StatefulBuilder(
-      builder: (context, setState) {
-        bool isCompleted = false;
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final int daysPassed = data['daysPassed'] ?? 0;
+        final int takenDoses = data['takenDoses'] ?? 0;
+        final int totalDoses = data['totalDoses'] ?? 0;
+        final int durationDays = data['durationDays'] ?? 0;
+        final bool isCompleted = data['isCompleted'] ?? false;
 
-        Map<String, List<bool>> medicineTracker = {
-          for (var med in medicines)
-            med: List.generate(durationDays, (i) {
-              if (i < daysPassed - 1) return true; // taken
-              if (i == daysPassed - 1) return false; // missed
-              return false; // current or future
-            }),
-        };
-
-        int calculateTaken() =>
-            medicineTracker.values
-                .expand((days) => days)
-                .where((taken) => taken)
-                .length;
-
-        double progress = calculateTaken() / (durationDays * medicines.length);
+        double progress = takenDoses / totalDoses;
+        int daysLeft = durationDays - daysPassed;
 
         return Opacity(
           opacity: isCompleted ? 0.4 : 1,
@@ -205,7 +254,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                             alignment: Alignment.center,
                             children: [
                               CircularProgressIndicator(
-                                value: progress,
+                                value: progress.clamp(0.0, 1.0),
                                 strokeWidth: 6,
                                 backgroundColor: Colors.grey.shade300,
                                 color: mainColor,
@@ -234,12 +283,12 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                "Duration: $durationDays days ($daysLeft left)",
+                                "Duration: $durationDays  ($daysLeft left)",
                                 style: const TextStyle(color: Colors.grey),
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                "Doses: ${calculateTaken()} / ${durationDays * medicines.length}",
+                                "Doses: $takenDoses / $totalDoses",
                                 style: TextStyle(color: mainColor),
                               ),
                             ],
@@ -294,9 +343,15 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                       children: List.generate(durationDays, (
                                         i,
                                       ) {
-                                        bool isCurrentDay = i == daysPassed;
-                                        bool isPastMissed = i == daysPassed - 1;
-                                        bool isFuture = i > daysPassed;
+                                        final int currentDayIndex = daysPassed;
+
+                                        final bool isChecked =
+                                            i < currentDayIndex;
+                                        final bool isCurrent =
+                                            i == currentDayIndex;
+                                        final bool canCheck = isCurrent;
+                                        final int frequency =
+                                            (totalDoses / durationDays).round();
 
                                         return Padding(
                                           padding: const EdgeInsets.only(
@@ -313,7 +368,7 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                               Container(
                                                 decoration: BoxDecoration(
                                                   border:
-                                                      isCurrentDay
+                                                      canCheck
                                                           ? Border.all(
                                                             color: subColor,
                                                             width: 2,
@@ -323,17 +378,21 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                                                       BorderRadius.circular(6),
                                                 ),
                                                 child: Checkbox(
-                                                  value:
-                                                      medicineTracker[med]![i],
+                                                  value: isChecked,
                                                   onChanged:
-                                                      (!isFuture &&
-                                                              (isCurrentDay ||
-                                                                  isPastMissed))
-                                                          ? (_) {
-                                                            setState(() {
-                                                              medicineTracker[med]![i] =
-                                                                  true; // Always mark as checked
-                                                            });
+                                                      canCheck
+                                                          ? (_) async {
+                                                            await service
+                                                                .updateTakenDoses(
+                                                                  patientId:
+                                                                      patientId,
+                                                                  prescriptionId:
+                                                                      prescriptionId,
+                                                                  activePlanId:
+                                                                      planId,
+                                                                  frequency:
+                                                                      frequency,
+                                                                );
                                                           }
                                                           : null,
                                                   activeColor: mainColor,
@@ -362,10 +421,12 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            isCompleted = true;
-                          });
+                        onPressed: () async {
+                          await service.markPlanAsCompleted(
+                            patientId: patientId,
+                            prescriptionId: prescriptionId,
+                            activePlanId: planId,
+                          );
                         },
                         icon: const Icon(Icons.done, color: Colors.white),
                         label: const Text(
@@ -395,56 +456,121 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
   }
 
   Widget _buildDoctorSent() {
-    return Column(
-      key: const ValueKey('doctorSent'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildPrescriptionCard(
-          title: "Dr. Javaid Iqbal - Pain Relief",
-          hasFollowButton: true,
-          totalDoses: 7,
-          takenDoses: 3,
-        ),
-        _buildPrescriptionCard(
-          title: "Dr. Ayesha - Hypertension",
-          hasFollowButton: true,
-          totalDoses: 10,
-          takenDoses: 5,
-        ),
-      ],
-    );
+    return isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : doctorSentPrescriptions.isEmpty
+        ? const Center(child: Text("No prescriptions found."))
+        : Column(
+          key: const ValueKey('doctorSent'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children:
+              doctorSentPrescriptions.map((data) {
+                try {
+                  final prescription = PrescriptionModel(
+                    prescriptionId: data['prescriptionId'] ?? '',
+                    doctorId: data['doctorId'] ?? '',
+                    doctorName: data['doctorName'] ?? 'Unknown Doctor',
+                    specialization: data['specialization'] ?? 'General',
+                    clinicId: data['clinicId'] ?? '',
+                    clinicName: data['clinicName'] ?? '',
+                    appointmentId: data['appointmentId'] ?? '',
+                    issuedAt: data['issuedAt'] ?? Timestamp.now(),
+                    medicines:
+                        data['medicines'] != null
+                            ? List<String>.from(data['medicines'])
+                            : [],
+                    labTests:
+                        data['labTests'] != null
+                            ? List<String>.from(data['labTests'])
+                            : null,
+                    diagnosis: data['diagnosis'] ?? null,
+                    notes: data['notes'] ?? null,
+                    isActive: data['isActive'] ?? false,
+                  );
+                  NotificationService.showNotification(
+                    title: 'New Prescription',
+                    body:
+                        'Dr. ${prescription.doctorName} has sent you a new prescription.',
+                  );
+                  return _buildPrescriptionCard(
+                    prescription: prescription,
+                    isDoctorSent: true,
+                  );
+                } catch (e) {
+                  return const SizedBox();
+                }
+              }).toList(),
+        );
   }
 
   Widget _buildCompletedPlans() {
-    return Column(
-      key: const ValueKey('completed'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildPrescriptionCard(
-          title: "Completed Plan 1",
-          isCompleted: true,
-          totalDoses: 10,
-          takenDoses: 10,
-        ),
-        _buildPrescriptionCard(
-          title: "Completed Plan 2",
-          isCompleted: true,
-          totalDoses: 8,
-          takenDoses: 8,
-        ),
-      ],
+    return FutureBuilder<List<ActivePlanModel>>(
+      future: PrescriptionService().getCompletedPlansForPatient(
+        widget.patient.pId,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No completed plans found.'));
+        } else {
+          final completedPlans = snapshot.data!;
+
+          return Column(
+            key: const ValueKey('completed'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children:
+                completedPlans.map((plan) {
+                  // Find the matching prescription in doctorSentPrescriptions
+                  final matchingPrescription = doctorSentPrescriptions
+                      .firstWhere(
+                        (doc) => doc['prescriptionId'] == plan.prescriptionId,
+                        orElse: () => {},
+                      );
+
+                  if (matchingPrescription == null) {
+                    return const SizedBox(); // Skip if no match found
+                  }
+
+                  // Build PrescriptionModel for the card
+                  final prescription = PrescriptionModel(
+                    appointmentId: matchingPrescription['appointmentId'] ?? "",
+                    prescriptionId: plan.prescriptionId,
+                    doctorId: matchingPrescription['doctorId'],
+                    doctorName: matchingPrescription['doctorName'],
+                    specialization: matchingPrescription['specialization'],
+                    clinicId: matchingPrescription['clinicId'],
+                    clinicName: matchingPrescription['clinicName'],
+                    issuedAt: matchingPrescription['issuedAt'],
+                    diagnosis: matchingPrescription['diagnosis'],
+                    notes: matchingPrescription['notes'],
+                    medicines: List<String>.from(plan.medicines),
+                    isActive: false, // Since it's completed
+                  );
+
+                  return _buildPrescriptionCard(
+                    prescription: prescription,
+                    isCompleted: true,
+                  );
+                }).toList(),
+          );
+        }
+      },
     );
   }
 
   Widget _buildPrescriptionCard({
-    required String title,
-    bool isActive = false,
+    required PrescriptionModel prescription,
+    bool isDoctorSent = false,
     bool isCompleted = false,
-    bool hasFollowButton = false,
-    required int totalDoses,
-    required int takenDoses,
   }) {
+    final int totalDoses = 7; // Replace with real logic if needed
+    final int takenDoses = 7; // Replace with real logic if needed
+
     final double completedPercentage = (takenDoses / totalDoses) * 100;
+
     return Card(
       color: Colors.white,
       margin: const EdgeInsets.only(bottom: 16),
@@ -456,24 +582,61 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              "${prescription.doctorName} - ${prescription.diagnosis ?? prescription.specialization}",
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            const Text(
-              "• Paracetamol 500mg – Twice a day\n• Azithromycin 250mg – Morning",
-            ),
+            if (prescription.medicines.isNotEmpty)
+              ...prescription.medicines.map((med) => Text("• $med")),
             const SizedBox(height: 12),
-            const Text(
-              "Duration: 7 days",
-              style: TextStyle(color: Colors.grey),
+            Text(
+              "Issued on: ${DateFormat.yMMMd().format(prescription.issuedAt.toDate())}",
+              style: const TextStyle(color: Colors.grey),
             ),
+            if (prescription.notes != null &&
+                prescription.notes!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                "Notes: ${prescription.notes}",
+                style: const TextStyle(color: Colors.black87),
+              ),
+            ],
             const SizedBox(height: 12),
-            if (hasFollowButton)
+            if (!prescription.isActive || isDoctorSent)
               ElevatedButton(
-                onPressed: () {
-                  // Create plan
+                onPressed: () async {
+                  try {
+                    // 1. Generate Active Plan
+                    await PrescriptionService().generateActivePlan(
+                      widget.patient.pId,
+                      prescription.prescriptionId,
+                      prescription,
+                    );
+
+                    // 2. Mark Prescription as Active
+                    await PrescriptionService().markPrescriptionActive(
+                      widget.patient.pId,
+                      prescription.prescriptionId,
+                    );
+
+                    // 3. Optionally show a success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Prescription followed successfully!'),
+                      ),
+                    );
+
+                    // 4. Refresh UI (if needed)
+                    setState(() {});
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error following prescription: $e'),
+                      ),
+                    );
+                  }
                 },
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainColor,
                   shape: RoundedRectangleBorder(
@@ -485,52 +648,22 @@ class _PrescriptionScreenState extends State<PrescriptionScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
               ),
-            if (isActive)
+            if (isCompleted) ...[
               Text(
-                "Progress: $takenDoses/$totalDoses doses taken",
-                style: TextStyle(color: Colors.grey),
+                "Progress: Completed",
+                style: const TextStyle(color: Colors.grey),
               ),
-            if (isCompleted)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        "Completed",
-                        style: TextStyle(
-                          color: Color.fromARGB(255, 94, 107, 94),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${completedPercentage.toInt()}%',
-                        style: TextStyle(
-                          color: Colors.green[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: completedPercentage / 100,
-                      backgroundColor: Colors.grey[300],
-                      color: Colors.green,
-                      minHeight: 6,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: completedPercentage / 100,
+                  backgroundColor: Colors.grey[300],
+                  color: Colors.green,
+                  minHeight: 6,
+                ),
               ),
+            ],
           ],
         ),
       ),

@@ -14,8 +14,7 @@ const Color subColor = Color(0xFF3ABCC0);
 class CombinedAppointmentsScreen extends StatefulWidget {
   final PatientModel patient;
 
-  const CombinedAppointmentsScreen({Key? key, required this.patient})
-    : super(key: key);
+  const CombinedAppointmentsScreen({super.key, required this.patient});
 
   @override
   State<CombinedAppointmentsScreen> createState() =>
@@ -349,15 +348,23 @@ class _CombinedAppointmentsScreenState
           context,
           MaterialPageRoute(
             builder:
-                // (context) => DiagnosisDetailScreen(appointment: appointment),
                 (context) => DiagnosisDetailScreen(appointment: appointment),
           ),
         );
       },
-      child: Card(
+      child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 4,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F8F8),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF00BFA6).withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -366,22 +373,44 @@ class _CombinedAppointmentsScreenState
               Text(
                 appointment['doctorName'],
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: Color(0xFF0A73B7), // main color
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 '${appointment['specialization']} • ${appointment['clinicName']}',
-                style: const TextStyle(color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    date,
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
-              Text('Date: $date', style: const TextStyle(fontSize: 14)),
-              const SizedBox(height: 4),
               if (appointment['diagnosis'] != null)
                 Text(
                   'Diagnosis: ${appointment['diagnosis']}',
-                  style: const TextStyle(fontSize: 14),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
                 ),
             ],
           ),
@@ -497,7 +526,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                   appointment['specialization'] ?? 'N/A',
                 ),
                 _buildDetailTile('Clinic', appointment['clinicName'] ?? 'N/A'),
-                _buildDetailTile('Date', "$date"),
+                _buildDetailTile('Date', date),
               ],
             ),
             const SizedBox(height: 20),
@@ -665,7 +694,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                     const Divider(height: 30, thickness: 1),
                     const Text(
                       'Notes:',
@@ -826,7 +855,7 @@ class DiagnosisDetailScreen extends StatelessWidget {
                     text:
                         '$name - Duration: $duration, /day: $perday, Timing: $timing',
                   );
-                }).toList()
+                })
               else
                 pw.Text('No medicines prescribed.'),
               if (notes.isNotEmpty) ...[

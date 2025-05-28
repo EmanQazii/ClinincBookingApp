@@ -92,7 +92,6 @@ class AppointmentService {
         return false; // Unknown or missing status
       }).toList();
     } catch (e) {
-      print('Error fetching appointments: $e');
       return [];
     }
   }
@@ -198,7 +197,6 @@ class AppointmentService {
           .map((doc) => AppointmentModel.fromMap(doc.data()))
           .toList();
     } catch (e) {
-      print('Error fetching appointments: $e');
       return [];
     }
   }

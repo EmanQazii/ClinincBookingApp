@@ -30,8 +30,6 @@ class OTPVerificationScreen extends StatefulWidget {
 
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   final TextEditingController _otpController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
   Future<void> _verifyOTP() async {
     final otp = _otpController.text.trim();
 
@@ -84,9 +82,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             password: widget.password,
           );
           await user.linkWithCredential(emailCredential);
-        } catch (e) {
-          print("Linking failed (might already be linked): $e");
-        }
+        } catch (e) {}
 
         // Step 3: Create patient model and store in Firestore
         final patient = PatientModel(

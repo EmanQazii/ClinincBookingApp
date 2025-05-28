@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 const mainColor = Color(0xFF0A73B7);
 const subColor = Color(0xFF00BFA6);
@@ -63,9 +62,7 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
       setState(() {
         isLoading = false;
       });
-    } catch (e) {
-      print('Error loading user data: $e');
-    }
+    } catch (e) {}
   }
 
   @override
@@ -85,7 +82,6 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
           .doc(patientId)
           .update({
             'name': nameController.text,
-            'phone': phoneController.text,
             'email': emailController.text,
             'age': ageController.text,
             'gender': genderController.text,
@@ -94,9 +90,7 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated successfully')),
       );
-    } catch (e) {
-      print('Error updating data: $e');
-    }
+    } catch (e) {}
   }
 
   @override
@@ -155,7 +149,6 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
               ),
             ),
             _buildEditableTile('Name', nameController, 'name'),
-            _buildEditableTile('Phone Number', phoneController, 'phone'),
             _buildEditableTile('Email', emailController, 'email'),
             _buildEditableTile('Age', ageController, 'age'),
             _buildEditableTile('Gender', genderController, 'gender'),
@@ -173,7 +166,7 @@ class _UpdatePersonalInfoScreenState extends State<UpdatePersonalInfoScreen> {
                 ),
                 elevation: 5,
               ),
-              icon: const Icon(Icons.save),
+              icon: const Icon(Icons.save, color: Colors.white),
               label: const Text('Save Changes'),
               onPressed: saveChanges,
             ),

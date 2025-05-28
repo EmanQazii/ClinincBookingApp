@@ -7,8 +7,9 @@ class AffiliationScreen extends StatelessWidget {
   final String hospitalName = "ABC Hospital";
   final String hospitalLocation = "123 Health St., City, Country";
   final String doctorRole = "Senior Dermatologist";
-  final String hospitalLogoPath =
-      'assets/images/clinic_logo.png'; // Add your logo image path
+  final String hospitalLogoPath = 'assets/images/clinic_logo.png';
+
+  const AffiliationScreen({super.key}); // Add your logo image path
 
   @override
   Widget build(BuildContext context) {

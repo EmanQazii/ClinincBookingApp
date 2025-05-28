@@ -12,7 +12,6 @@ class PatientService {
           .doc(uid)
           .set(patient.toJson(), SetOptions(merge: true));
     } catch (e) {
-      print("Error creating/updating patient: $e");
       rethrow;
     }
   }
@@ -34,30 +33,22 @@ class PatientService {
       }
       return null;
     } catch (e) {
-      print("Error fetching patient by email: $e");
       return null;
     }
   }
 
   /// Get patient data by UID
   Future<PatientModel?> getPatientById(String uid) async {
-    print("Fetching patient with UID: $uid"); // 🟢 Add this
-
     try {
       final doc = await _patientCollection.doc(uid).get();
 
       if (doc.exists) {
-        print("Document data: ${doc.data()}");
         return PatientModel.fromJson(
           doc.data() as Map<String, dynamic>,
           doc.id,
         );
-      } else {
-        print("Document does not exist");
-      }
-    } catch (e) {
-      print("Error fetching patient: $e");
-    }
+      } else {}
+    } catch (e) {}
     return null;
   }
 
@@ -67,9 +58,7 @@ class PatientService {
       await _patientCollection.doc(uid).update({
         'lastLogin': FieldValue.serverTimestamp(),
       });
-    } catch (e) {
-      print("Error updating last login: $e");
-    }
+    } catch (e) {}
   }
 
   /// Check if patient exists
@@ -78,7 +67,6 @@ class PatientService {
       final doc = await _patientCollection.doc(uid).get();
       return doc.exists;
     } catch (e) {
-      print("Error checking patient existence: $e");
       return false;
     }
   }

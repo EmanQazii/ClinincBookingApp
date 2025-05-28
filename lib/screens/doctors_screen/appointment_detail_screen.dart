@@ -1,10 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:clinic_booking_app/models/appointment_model.dart';
-import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 
 const mainColor = Color(0xFF0A73B7);
@@ -13,8 +10,7 @@ const subColor = Color(0xFF3ABCC0);
 class AppointmentDetailScreen extends StatelessWidget {
   final AppointmentModel appointment;
 
-  const AppointmentDetailScreen({Key? key, required this.appointment})
-    : super(key: key);
+  const AppointmentDetailScreen({super.key, required this.appointment});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +18,7 @@ class AppointmentDetailScreen extends StatelessWidget {
         appointment.prescription!.map((item) {
           final parts = item.split(',');
           return {
-            'name': parts.length > 0 ? parts[0] : '',
+            'name': parts.isNotEmpty ? parts[0] : '',
             'duration': parts.length > 1 ? parts[1] : '',
             '/day': parts.length > 2 ? parts[2] : '',
             'timings': parts.length > 3 ? parts[3] : '',
@@ -274,10 +270,6 @@ class AppointmentDetailScreen extends StatelessWidget {
         },
       ),
     );
-
-    // final output = await getTemporaryDirectory();
-    // final file = File('${output.path}/appointment_report.pdf');
-    //await file.writeAsBytes(await pdf.save());
 
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),

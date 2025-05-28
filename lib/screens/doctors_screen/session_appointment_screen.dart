@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '/models/appointment_model.dart';
 import '/services/patient_service.dart';
@@ -5,6 +6,8 @@ import '/models/patient_model.dart';
 import '/models/doctor_model.dart';
 import '/services/appointment_service.dart';
 import '../doctors_screen/doctor_dashboard.dart';
+import '/services/prescription_service.dart';
+import '/models/prescription_model.dart';
 
 const Color mainColor = Color(0xFF0A73B7);
 const Color subColor = Color(0xFF3ABCC0);
@@ -30,8 +33,8 @@ class _AppointmentSessionScreenState extends State<AppointmentSessionScreen> {
   bool _isLoadingPatient = true;
 
   // Controllers for prescriptions and lab tests
-  List<Map<String, TextEditingController>> _prescriptionControllers = [];
-  List<Map<String, TextEditingController>> _labTestControllers = [];
+  final List<Map<String, TextEditingController>> _prescriptionControllers = [];
+  final List<Map<String, TextEditingController>> _labTestControllers = [];
   final TextEditingController _diagnosisController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
@@ -58,10 +61,14 @@ class _AppointmentSessionScreenState extends State<AppointmentSessionScreen> {
     _diagnosisController.dispose();
     _notesController.dispose();
     for (var ctrlMap in _prescriptionControllers) {
-      ctrlMap.values.forEach((controller) => controller.dispose());
+      for (var controller in ctrlMap.values) {
+        controller.dispose();
+      }
     }
     for (var ctrlMap in _labTestControllers) {
-      ctrlMap.values.forEach((controller) => controller.dispose());
+      for (var controller in ctrlMap.values) {
+        controller.dispose();
+      }
     }
     super.dispose();
   }
@@ -86,6 +93,91 @@ class _AppointmentSessionScreenState extends State<AppointmentSessionScreen> {
     setState(() {
       _labTestControllers.add(newLabTest);
     });
+  }
+
+  Future<void> _sendPrescription() async {
+    try {
+      if (_patient == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Patient data not loaded.")),
+        );
+        return;
+      }
+
+      final prescriptionService = PrescriptionService();
+
+      // Collect medicines
+      final medicines =
+          _prescriptionControllers
+              .map((map) {
+                final name = map['name']!.text.trim();
+                final duration = map['duration']!.text.trim();
+                final perDay = map['perDay']!.text.trim();
+                final timing = map['timing']!.text.trim();
+                if (name.isEmpty) return null;
+                return "$name | $duration days | $perDay times per day | $timing";
+              })
+              .whereType<String>()
+              .toList();
+
+      // Collect lab tests
+      final labTests =
+          _labTestControllers
+              .map((map) {
+                final name = map['name']!.text.trim();
+                final desc = map['description']!.text.trim();
+                if (name.isEmpty) return null;
+                return "$name - $desc";
+              })
+              .whereType<String>()
+              .toList();
+
+      final prescription = PrescriptionModel(
+        prescriptionId: "", // Will be set by Firestore
+        doctorId: widget.doctor.id,
+        doctorName: widget.doctor.name,
+        specialization: widget.doctor.specialization,
+        clinicId: widget.appointment.clinicId,
+        clinicName: widget.appointment.clinicName,
+        appointmentId: widget.appointment.appointmentId,
+        issuedAt: Timestamp.now(),
+        medicines: medicines,
+        labTests: labTests.isNotEmpty ? labTests : null,
+        diagnosis:
+            _diagnosisController.text.trim().isNotEmpty
+                ? _diagnosisController.text.trim()
+                : null,
+        notes:
+            _notesController.text.trim().isNotEmpty
+                ? _notesController.text.trim()
+                : null,
+        isActive: false,
+      );
+
+      // Save to Firestore
+      final prescriptionId = await prescriptionService.addPrescription(
+        _patient!.pId,
+        prescription,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Prescription sent successfully.")),
+      );
+
+      // Optional: Clear fields after sending
+      setState(() {
+        _diagnosisController.clear();
+        _notesController.clear();
+        _prescriptionControllers.clear();
+        _labTestControllers.clear();
+        _addPrescriptionCard();
+        _addLabTestCard();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: ${e.toString()}")));
+    }
   }
 
   @override
@@ -226,9 +318,10 @@ class _AppointmentSessionScreenState extends State<AppointmentSessionScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {
-                      // Call function to handle form submission
+                    onPressed: () async {
+                      await _sendPrescription();
                     },
+
                     child: const Text(
                       "Send Prescription",
                       style: TextStyle(color: Colors.white),

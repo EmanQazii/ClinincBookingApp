@@ -3,9 +3,10 @@ import '../services/auth_service.dart';
 import '../services/patient_service.dart';
 import 'otp_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:clinic_booking_app/models/doctor_model.dart';
 import 'package:clinic_booking_app/services/doctor_service.dart';
 import 'doctors_screen/doctor_dashboard.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -68,6 +69,14 @@ class _LoginScreenState extends State<LoginScreen> {
           _showMessage("No patient data found");
           setState(() => _isLoading = false);
           return;
+        }
+        // Add this part here:
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
+          await FirebaseFirestore.instance
+              .collection("patients")
+              .doc(patient.pId)
+              .update({'fcmToken': fcmToken});
         }
 
         Navigator.pushNamed(context, '/patient_dashboard', arguments: patient);
@@ -174,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                     verificationFailed: (FirebaseAuthException e) {
                       // Handle error
-                      print("Verification failed: ${e.message}");
                     },
                     codeSent: (String verificationId, int? resendToken) {
                       if (!mounted) return;

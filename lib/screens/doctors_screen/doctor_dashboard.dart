@@ -395,14 +395,14 @@ class TodayAppointments extends StatelessWidget {
 class _UpcomingAppointments extends StatelessWidget {
   final String clinicId;
   final Doctor doctor;
-  _UpcomingAppointments({required this.doctor, required this.clinicId});
+  const _UpcomingAppointments({required this.doctor, required this.clinicId});
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<AppointmentModel>>(
       future: DoctorService().getUpcomingAppointmentsForDoctor(
         clinicId: clinicId,
-        doctorId: doctor.id!,
+        doctorId: doctor.id,
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -637,25 +637,4 @@ class _NewsCard extends StatelessWidget {
       ),
     );
   }
-}
-
-Route _createRouteToAppointmentScreen(Doctor doctor, String clinicId) {
-  return PageRouteBuilder(
-    pageBuilder:
-        (context, animation, secondaryAnimation) =>
-            AppointmentScreen(doctor: doctor, clinicId: clinicId),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      const begin = Offset(1.0, 0.0); // Slide from right
-      const end = Offset.zero;
-      const curve = Curves.ease;
-
-      final tween = Tween(
-        begin: begin,
-        end: end,
-      ).chain(CurveTween(curve: curve));
-      final offsetAnimation = animation.drive(tween);
-
-      return SlideTransition(position: offsetAnimation, child: child);
-    },
-  );
 }

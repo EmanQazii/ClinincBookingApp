@@ -58,6 +58,8 @@ class DoctorProfile extends StatelessWidget {
     },
   ];
 
+  DoctorProfile({super.key});
+
   @override
   Widget build(BuildContext context) {
     double rating = doctorData['averageRating'];

@@ -25,10 +25,8 @@ class ClinicService {
     var docSnapshot = await _db.collection('clinics').doc(clinicId).get();
 
     if (docSnapshot.exists) {
-      // If the clinic exists, return a Clinic object
       return Clinic.fromFirestore(docSnapshot);
     } else {
-      // If the clinic doesn't exist, return null
       return null;
     }
   }

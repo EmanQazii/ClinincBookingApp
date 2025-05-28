@@ -4,7 +4,6 @@ import 'patient_service.dart'; // Firestore CRUD handler
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final PatientService _patientService = PatientService();
 
   String? _verificationId;
 
@@ -70,48 +69,6 @@ class AuthService {
     }
   }
 
-  // /// Sign up using phone + password (saved as dummy email)
-  // Future<User?> signUpWithPhoneAndPassword(
-  //   String phone,
-  //   String password,
-  //   PatientModel patient,
-  // ) async {
-  //   try {
-  //     final email = _phoneToEmail(phone);
-  //     UserCredential result = await _auth.createUserWithEmailAndPassword(
-  //       email: email,
-  //       password: password,
-  //     );
-  //     final user = result.user;
-  //     if (user != null) {
-  //       await _patientService.createOrUpdatePatient(user.uid, patient);
-  //     }
-  //     return user;
-  //   } catch (e) {
-  //     print("Signup error: $e");
-  //     return null;
-  //   }
-  // }
-
-  // /// Sign in with either email/password or phone/password
-  // Future<User?> signInWithEmailOrPhone({
-  //   String? email,
-  //   String? phone,
-  //   required String password,
-  // }) async {
-  //   try {
-  //     final usedEmail = email ?? _phoneToEmail(phone!);
-  //     UserCredential result = await _auth.signInWithEmailAndPassword(
-  //       email: usedEmail,
-  //       password: password,
-  //     );
-  //     return result.user;
-  //   } catch (e) {
-  //     print("Login error: $e");
-  //     return null;
-  //   }
-  // }
-
   /// Simple wrapper for email-password login
   Future<User?> signInWithEmailAndPassword(
     String email,
@@ -124,7 +81,6 @@ class AuthService {
       );
       return result.user;
     } catch (e) {
-      print("Login error (email+pass): $e");
       return null;
     }
   }

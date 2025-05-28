@@ -8,6 +8,7 @@ import 'package:clinic_booking_app/models/clinic_model.dart';
 import 'package:clinic_booking_app/models/doctor_model.dart';
 import 'package:clinic_booking_app/services/clinic_service.dart';
 import 'package:clinic_booking_app/services/doctor_service.dart';
+import 'package:clinic_booking_app/services/notification_service.dart';
 
 class PatientDashboard extends StatefulWidget {
   final PatientModel patient;
@@ -21,12 +22,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
   int _currentIndex = 0;
   bool _isBookTapped = false;
   Color mainColor = Color(0xFF0A73B7);
-  Color subColor = const Color(0xFF3ABCC0);
+  Color subColor = Color(0xFF3ABCC0);
   List<Clinic> _clinics = [];
   bool _isLoading = true;
   Clinic? clinic;
   List<Doctor> _recommendedDoctors = [];
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   List<Clinic> _filteredClinics = [];
   List<Doctor> _filteredDoctors = [];
 
@@ -36,6 +37,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
     _fetchClinics();
     _fetchRecommendedDoctors();
     fetchSingleClinic();
+    _searchController.addListener(() {
+      _filterSearchResults(_searchController.text);
+    });
   }
 
   Future<void> fetchSingleClinic() async {
@@ -138,7 +142,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
       case '/appointments_history':
         return CombinedAppointmentsScreen(patient: widget.patient);
       case '/prescriptions':
-        return PrescriptionScreen();
+        return PrescriptionScreen(patient: widget.patient);
       case '/profile':
         return ProfileScreen();
       default:
@@ -148,6 +152,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    bool _isSearching() => _searchController.text.trim().isNotEmpty;
+
     return Scaffold(
       appBar: _buildAppBar(context),
       backgroundColor: Colors.white,
@@ -157,26 +163,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSearchBar(),
-            const SizedBox(height: 24),
-            _sectionTitle("Clinics Near me"),
-            const SizedBox(height: 12),
-            _buildHorizontalCards(context),
-            const SizedBox(height: 24),
-            _sectionTitle("Promotions"),
-            const SizedBox(height: 12),
-            _buildPromotionCarousel(),
-            const SizedBox(height: 24),
-            _buildSpecializationsCard(context),
-
-            const SizedBox(height: 20),
-            _sectionTitle("Recommended Doctors for you"),
-            const SizedBox(height: 12),
-            _buildHorizontalCards(context, isDoctor: true),
-            const SizedBox(height: 24),
-            _sectionTitle("Health Tips"),
-            const SizedBox(height: 12),
-            _buildHealthTipsSection(),
+            _buildSearchBar(), // Make sure this is always visible at the top
+            const SizedBox(height: 16),
+            _isSearching() ? _buildSearchResults() : _buildDefaultDashboard(),
           ],
         ),
       ),
@@ -185,10 +174,115 @@ class _PatientDashboardState extends State<PatientDashboard> {
     );
   }
 
+  Widget _buildDefaultDashboard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        _sectionTitle("Clinics Near me"),
+        const SizedBox(height: 12),
+        _buildHorizontalCards(context),
+        const SizedBox(height: 24),
+        _sectionTitle("Promotions"),
+        const SizedBox(height: 12),
+        _buildPromotionCarousel(),
+        const SizedBox(height: 24),
+        _buildSpecializationsCard(context),
+        const SizedBox(height: 20),
+        _sectionTitle("Recommended Doctors for you"),
+        const SizedBox(height: 12),
+        _buildHorizontalCards(context, isDoctor: true),
+        const SizedBox(height: 24),
+        _sectionTitle("Health Tips"),
+        const SizedBox(height: 12),
+        _buildHealthTipsSection(),
+      ],
+    );
+  }
+
+  Widget _buildSearchResults() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_filteredClinics.isNotEmpty) ...[
+          _sectionTitle("Matching Clinics"),
+          const SizedBox(height: 12),
+          _buildSearchClinicList(),
+          const SizedBox(height: 24),
+        ],
+        if (_filteredDoctors.isNotEmpty) ...[
+          _sectionTitle("Matching Doctors"),
+          const SizedBox(height: 12),
+          _buildSearchDoctorList(),
+          const SizedBox(height: 24),
+        ],
+        if (_filteredClinics.isEmpty && _filteredDoctors.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 40),
+              child: Text(
+                "No results found.",
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSearchClinicList() {
+    return Column(
+      children:
+          _filteredClinics
+              .map(
+                (clinic) => ListTile(
+                  leading: Icon(Icons.local_hospital, color: subColor),
+                  title: Text(clinic.name),
+                  subtitle: Text(clinic.location),
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/clinic_details',
+                      arguments: clinic,
+                    );
+                  },
+                ),
+              )
+              .toList(),
+    );
+  }
+
+  Widget _buildSearchDoctorList() {
+    return Column(
+      children:
+          _filteredDoctors
+              .map(
+                (doctor) => ListTile(
+                  leading: Icon(Icons.person, color: subColor),
+                  title: Text(doctor.name),
+                  subtitle: Text(doctor.specialization),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => BookAppointmentScreen(
+                              doctor: doctor,
+                              clinic: clinic!,
+                            ),
+                      ),
+                    );
+                  },
+                ),
+              )
+              .toList(),
+    );
+  }
+
   AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        icon: const Icon(Icons.arrow_back, color: Color(0xFF0A73B7)),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -203,7 +297,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
       elevation: 0,
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_none, color: Colors.black),
+          icon: const Icon(Icons.notifications_none, color: Color(0xFF0A73B7)),
           onPressed: () => _openNotificationPanel(context),
         ),
         const SizedBox(width: 16),
@@ -218,15 +312,31 @@ class _PatientDashboardState extends State<PatientDashboard> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
+        final notifications =
+            NotificationService.inAppNotifications.reversed.toList();
+
         return Container(
           padding: const EdgeInsets.all(16),
-          height: 200,
-          child: const Center(
-            child: Text(
-              "You have no new notifications.",
-              style: TextStyle(fontSize: 16),
-            ),
-          ),
+          height: 300,
+          child:
+              notifications.isEmpty
+                  ? const Center(
+                    child: Text(
+                      "You have no new notifications.",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  )
+                  : ListView.builder(
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = notifications[index];
+                      return ListTile(
+                        leading: const Icon(Icons.notifications),
+                        title: Text(notification['title'] ?? ''),
+                        subtitle: Text(notification['body'] ?? ''),
+                      );
+                    },
+                  ),
         );
       },
     );
@@ -252,7 +362,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
           Expanded(
             child: TextField(
               controller: _searchController,
-              onChanged: _filterSearchResults,
               decoration: InputDecoration(
                 hintText: "Search nearby clinics, doctors...",
                 hintStyle: TextStyle(color: Colors.grey.shade600),
@@ -260,14 +369,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF3ABCC0)),
-            onPressed: () {
-              _filterSearchResults(
-                _searchController.text,
-              ); // Optional: trigger search manually
-            },
-          ),
+          Icon(
+            Icons.search,
+            color: Color(0xFF3ABCC0),
+          ), // Optional: just an icon now
         ],
       ),
     );
@@ -523,14 +628,34 @@ class _PatientDashboardState extends State<PatientDashboard> {
         controller: PageController(viewportFraction: 0.9),
         itemCount: promoImages.length,
         itemBuilder: (context, index) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 500),
-            margin: const EdgeInsets.symmetric(horizontal: 5),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              image: DecorationImage(
-                image: AssetImage(promoImages[index]),
-                fit: BoxFit.cover,
+          return GestureDetector(
+            onTap: () {
+              showDialog(
+                context: context,
+                builder:
+                    (context) => AlertDialog(
+                      title: const Text("Coming Soon"),
+                      content: const Text(
+                        "This feature will be available integrated with the Clinic Dashboard soon!",
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text("OK"),
+                        ),
+                      ],
+                    ),
+              );
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              margin: const EdgeInsets.symmetric(horizontal: 5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                image: DecorationImage(
+                  image: AssetImage(promoImages[index]),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           );
@@ -620,7 +745,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
         switch (index) {
           case 0:
             Navigator.pushReplacementNamed(context, '/patient_dashboard');
-            //_navigateWithAnimation(context, '/patient_dashboard');
             break;
           case 1:
             _navigateWithAnimation(context, '/appointments_history');
@@ -651,7 +775,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
 
 Widget _buildSpecializationsCard(BuildContext context) {
   final List<Map<String, String>> specializations = [
-    {"title": "Skin Specialist", "image": "assets/icons/skin.png"},
+    {"title": "Dermatologist", "image": "assets/icons/skin.png"},
     {"title": "Gynecologist", "image": "assets/icons/gyno.png"},
     {"title": "Urologist", "image": "assets/icons/urologist.png"},
     {"title": "Child Specialist", "image": "assets/icons/child.png"},

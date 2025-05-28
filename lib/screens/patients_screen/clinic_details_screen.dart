@@ -105,14 +105,16 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-
-            Wrap(
-              spacing: 30,
-              runSpacing: 12,
-              children:
-                  widget.clinic.hours.entries.map((entry) {
-                    return _buildHoursColumn(entry.key, entry.value);
-                  }).toList(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children:
+                    widget.clinic.hours.entries.map((entry) {
+                      return _buildHoursColumn(entry.key, entry.value);
+                    }).toList(),
+              ),
             ),
 
             const SizedBox(height: 24),
@@ -193,8 +195,8 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
 
   Widget _buildDoctorCard(BuildContext context, Doctor doctor) {
     return Container(
-      width: 200, // 2 cards visible within screen width ~360+
-      height: 350, // Set a fixed height to match the design
+      width: 200,
+      height: 350,
       margin: const EdgeInsets.only(right: 10),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -352,8 +354,6 @@ class _CliClinicDetailScreenState extends State<ClinicDetailScreen> {
         }
 
         final reviews = snapshot.data ?? [];
-        print('Reviews fetched: ${reviews.length}'); // Debug line
-
         if (reviews.isEmpty) {
           return const Text('No reviews yet.');
         }

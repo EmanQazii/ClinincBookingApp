@@ -54,8 +54,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   Future<void> fetchAppointments() async {
     setState(() => isLoading = true);
-    final appointmentService = AppointmentService();
-
     final fetchedAppointments =
         await AppointmentService.fetchAllAppointmentsByClinicAndDoctor(
           clinicId: widget.clinicId,
@@ -136,7 +134,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "${appointment.appointmentTime}",
+                      appointment.appointmentTime,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -145,7 +143,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      appointment.patientName ?? 'Unknown',
+                      appointment.patientName,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -162,7 +160,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    appointment.specialization ?? '',
+                    appointment.specialization,
                     style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                   SizedBox(height: 6),

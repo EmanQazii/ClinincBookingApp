@@ -8,16 +8,17 @@ import '/models/appointment_model.dart';
 import '/models/patient_model.dart';
 import '/services/patient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '/services/notification_service.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final Doctor doctor;
   final Clinic clinic;
 
   const BookAppointmentScreen({
-    Key? key,
+    super.key,
     required this.doctor,
     required this.clinic,
-  }) : super(key: key);
+  });
 
   @override
   _BookAppointmentScreenState createState() => _BookAppointmentScreenState();
@@ -55,21 +56,15 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     try {
       // Get the currently logged-in user's UID
       final user = FirebaseAuth.instance.currentUser!;
-      if (user.uid != null) {
-        print("user id nowwwww${user.uid}");
-        final patientData = await PatientService().getPatientById(user.uid);
+      final patientData = await PatientService().getPatientById(user.uid);
 
-        if (patientData != null) {
-          setState(() {
-            patient = patientData;
-            patientId = user.uid; // Using user UID as the patientId
-          });
-          print('Patient Data: ${patientData.name}'); // ✅ safe now
-        }
+      if (patientData != null) {
+        setState(() {
+          patient = patientData;
+          patientId = user.uid; // Using user UID as the patientId
+        });
       }
-    } catch (e) {
-      print("Error fetching patient data: $e");
-    }
+    } catch (e) {}
   }
 
   void _selectDate() async {
@@ -139,11 +134,16 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       );
 
       await AppointmentService.bookAppointment(appointment);
+      await NotificationService.showNotification(
+        title: 'Appointment Booked',
+        body:
+            'Your appointment with ${appointment.doctorName} is confirmed on ${appointment.appointmentDate}.',
+      );
 
       if (mounted) {
         _showDialog('Your Appointment is Confirmed!');
         Future.delayed(Duration(seconds: 2), () {
-          Navigator.pop(context); // Go back to the previous screen
+          Navigator.pop(context);
         });
       }
     } catch (e) {

@@ -6,8 +6,7 @@ const subColor = Color(0xFF3ABCC0);
 class DiagnosisDetailScreen extends StatefulWidget {
   final Map<String, dynamic> patient;
 
-  const DiagnosisDetailScreen({Key? key, required this.patient})
-    : super(key: key);
+  const DiagnosisDetailScreen({super.key, required this.patient});
 
   @override
   State<DiagnosisDetailScreen> createState() => _DiagnosisDetailScreenState();
